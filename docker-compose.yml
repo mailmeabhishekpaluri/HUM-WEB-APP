@@ -1,0 +1,23 @@
+version: '3.8'
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: humanity_db
+    environment:
+      POSTGRES_USER: humanity
+      POSTGRES_PASSWORD: humanity_dev_pass
+      POSTGRES_DB: humanity_iop
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  mailhog:
+    image: mailhog/mailhog
+    container_name: humanity_mail
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+volumes:
+  postgres_data:

@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
+dist/
+build/
+.next/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+
+# Uploads
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# Prisma
+backend/prisma/migrations/
+
+# TypeScript
+*.tsbuildinfo

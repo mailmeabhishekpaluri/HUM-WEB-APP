@@ -1,0 +1,734 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum Role {
+  SUPER_ADMIN
+  PROGRAM_MANAGER
+  CCI_MANAGER
+  CCI_STAFF
+  VOLUNTEER
+}
+
+enum CCIType {
+  CHILDRENS_HOME
+  OBSERVATION_HOME
+  SPECIAL_HOME
+  SHELTER_HOME
+}
+
+enum FundingType {
+  GOVT_FUNDED
+  NGO_FUNDED
+}
+
+enum CCIStatus {
+  ACTIVE
+  ON_WATCH
+  SUSPENDED
+}
+
+enum ComplianceType {
+  JJ_ACT_RENEWAL
+  STATE_INSPECTION
+  CWC_CASE_REVIEW
+  FIRE_SAFETY
+  HEALTH_AUDIT
+  STAFF_POLICE_VERIFICATION
+  FINANCIAL_AUDIT
+  CWC_VISIT
+}
+
+enum ComplianceStatus {
+  COMPLIANT
+  DUE_SOON
+  OVERDUE
+}
+
+enum DocCategory {
+  REGISTRATION
+  INSPECTION
+  HEALTH_SAFETY
+  FINANCIAL
+  STAFF_VERIFICATION
+  CHILD_REGISTER
+  PHOTOS
+  CORRESPONDENCE
+}
+
+enum VisitType {
+  ROUTINE
+  COMPLIANCE_CHECK
+  PROGRAMME_DELIVERY
+  EMERGENCY
+  FIRST_VISIT
+}
+
+enum VisitStatus {
+  ACTIVE
+  WITHDRAWN
+}
+
+enum IssueSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum AdmissionSource {
+  POLICE
+  CWC
+  SELF
+  NGO_REFERRAL
+  OTHER
+}
+
+enum ChildCategory {
+  ORPHAN
+  SEMI_ORPHAN
+  ABANDONED
+  RESCUED_TRAFFICKING
+  RESCUED_ABUSE
+  DESTITUTE
+  OTHER
+}
+
+enum SessionType {
+  MORNING
+  SCHOOL
+  EVENING_PROGRAMME
+  SPECIAL_EVENT
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LEAVE
+  SICK
+  DISCHARGED
+}
+
+enum CaseEventType {
+  CWC_ORDER
+  FAMILY_TRACING
+  TRANSFER
+  RESTORATION
+  ADOPTION_FOSTER
+  INCIDENT_REPORT
+  COUNSELLING_REFERRAL
+  CHILD_STATEMENT
+  EXIT
+}
+
+enum ProfessionalDomain {
+  EDUCATION
+  HEALTHCARE
+  TECHNOLOGY
+  FINANCE
+  ARTS
+  OTHER
+}
+
+enum Programme {
+  P1_EDUCATION
+  P2_SEL
+  P3_DIGITAL_LITERACY
+  P4_HEALTH_NUTRITION
+  P5_LIBRARY
+}
+
+enum PoliceStatus {
+  NOT_SUBMITTED
+  SUBMITTED_PENDING
+  VERIFIED
+}
+
+enum SafeguardingStatus {
+  NOT_ATTEMPTED
+  PASS
+  FAIL
+}
+
+enum AccountStatus {
+  PENDING
+  ACTIVE
+  ON_HOLD
+  DEACTIVATED
+}
+
+enum ProgrammeArea {
+  EDUCATION
+  HEALTH
+  NUTRITION
+  LIFE_SKILLS
+  SPORTS
+  OTHER
+}
+
+enum SafeguardingLevel {
+  NONE_REQUIRED
+  SAFEGUARDING_QUIZ_ONLY
+  POLICE_VERIFICATION_REQUIRED
+}
+
+enum OpportunityStatus {
+  DRAFT
+  OPEN
+  FULL
+  COMPLETED
+  CANCELLED
+}
+
+enum RegistrationStatus {
+  REGISTERED
+  INVITED
+  CONFIRMED
+  DECLINED
+  ATTENDED
+  NO_SHOW
+}
+
+enum ClaimStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum BadgeTrigger {
+  FIRST_SESSION
+  HOURS_10
+  HOURS_50
+  HOURS_100
+  CONSECUTIVE_3_MONTHS
+  SKILL_SPECIALIST_5
+  EVENT_ORGANISER_2
+  HEALTH_WARRIOR_3
+}
+
+enum EntityType {
+  CCI
+  CHILD
+  VOLUNTEER
+  OPPORTUNITY
+  DOCUMENT
+  REPORT
+  USER
+}
+
+enum AuditAction {
+  CREATED
+  UPDATED
+  DELETED
+  VIEWED
+  EXPORTED
+}
+
+enum NotificationType {
+  COMPLIANCE_DUE
+  COMPLIANCE_EXPIRED
+  VOLUNTEER_REGISTERED
+  VOLUNTEER_APPROVED
+  VOLUNTEER_REJECTED
+  OPPORTUNITY_ASSIGNED
+  OPPORTUNITY_REMINDER
+  ATTENDANCE_CONFIRMED
+  BADGE_EARNED
+  CHILD_ABSENT
+  CRITICAL_INCIDENT
+  VISIT_LOG_ADDED
+}
+
+// ─── Users & Auth ────────────────────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  mobile       String?  @unique
+  passwordHash String?
+  role         Role
+  name         String
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  managedCCIs      UserCCI[]
+  auditLogs        AuditLog[]
+  visitLogs        VisitLog[]
+  notifications    Notification[]
+  volunteerProfile VolunteerProfile?
+  otpCodes         OtpCode[]
+  refreshTokens    RefreshToken[]
+}
+
+model OtpCode {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  code      String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model UserCCI {
+  userId String
+  cciId  String
+  user   User   @relation(fields: [userId], references: [id])
+  cci    CCI    @relation(fields: [cciId], references: [id])
+
+  @@id([userId, cciId])
+}
+
+// ─── CCI Module ──────────────────────────────────────────────────────────────
+
+model CCI {
+  id                      String      @id @default(cuid())
+  name                    String
+  type                    CCIType
+  registrationNumber      String      @unique
+  district                String
+  state                   String
+  fullAddress             String
+  latitude                Float?
+  longitude               Float?
+  sanctionedCapacityBoys  Int
+  sanctionedCapacityGirls Int
+  currentOccupancy        Int
+  superintendentName      String
+  superintendentPhone     String
+  superintendentEmail     String?
+  managingSociety         String
+  dateOfEstablishment     DateTime?
+  fundingType             FundingType
+  status                  CCIStatus   @default(ACTIVE)
+  notes                   String?
+  createdAt               DateTime    @default(now())
+  updatedAt               DateTime    @updatedAt
+
+  managers        UserCCI[]
+  complianceItems ComplianceItem[] @relation("CCICompliance")
+  documents       Document[]
+  visitLogs       VisitLog[]
+  issues          Issue[]
+  children        Child[]
+  auditLogs       AuditLog[]
+}
+
+model ComplianceItem {
+  id          String           @id @default(cuid())
+  cciId       String
+  cci         CCI              @relation("CCICompliance", fields: [cciId], references: [id])
+  type        ComplianceType
+  dueDate     DateTime
+  completedAt DateTime?
+  status      ComplianceStatus @default(COMPLIANT)
+  outcome     String?
+  notes       String?
+  documentId  String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+model Document {
+  id         String      @id @default(cuid())
+  cciId      String?
+  cci        CCI?        @relation(fields: [cciId], references: [id])
+  category   DocCategory
+  name       String
+  fileUrl    String
+  mimeType   String
+  sizeBytes  Int
+  uploadedBy String
+  expiryDate DateTime?
+  createdAt  DateTime    @default(now())
+}
+
+model VisitLog {
+  id                  String      @id @default(cuid())
+  cciId               String
+  cci                 CCI         @relation(fields: [cciId], references: [id])
+  loggedById          String
+  loggedBy            User        @relation(fields: [loggedById], references: [id])
+  visitDate           DateTime
+  visitType           VisitType
+  childrenEngaged     Int?
+  observations        String?
+  activitiesConducted String[]
+  status              VisitStatus @default(ACTIVE)
+  withdrawnReason     String?
+  latitude            Float?
+  longitude           Float?
+  superintendentAck   Boolean     @default(false)
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+
+  photographs VisitPhoto[]
+  actionItems ActionItem[]
+  volunteers  VisitVolunteer[]
+  issues      Issue[]
+}
+
+model VisitPhoto {
+  id         String   @id @default(cuid())
+  visitLogId String
+  visitLog   VisitLog @relation(fields: [visitLogId], references: [id])
+  fileUrl    String
+  createdAt  DateTime @default(now())
+}
+
+model ActionItem {
+  id          String    @id @default(cuid())
+  visitLogId  String
+  visitLog    VisitLog  @relation(fields: [visitLogId], references: [id])
+  description String
+  assigneeId  String?
+  dueDate     DateTime?
+  isResolved  Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+}
+
+model VisitVolunteer {
+  visitLogId  String
+  volunteerId String
+  visitLog    VisitLog @relation(fields: [visitLogId], references: [id])
+
+  @@id([visitLogId, volunteerId])
+}
+
+model Issue {
+  id          String        @id @default(cuid())
+  cciId       String
+  cci         CCI           @relation(fields: [cciId], references: [id])
+  visitLogId  String?
+  visitLog    VisitLog?     @relation(fields: [visitLogId], references: [id])
+  title       String
+  description String
+  severity    IssueSeverity
+  assigneeId  String?
+  isResolved  Boolean       @default(false)
+  resolvedAt  DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+// ─── Child Module ────────────────────────────────────────────────────────────
+
+model Child {
+  id               String          @id @default(cuid())
+  childId          String          @unique
+  firstName        String
+  lastName         String?
+  dateOfBirth      DateTime
+  gender           Gender
+  cciId            String
+  cci              CCI             @relation(fields: [cciId], references: [id])
+  admissionDate    DateTime
+  admissionSource  AdmissionSource
+  category         ChildCategory
+  motherTongue     String?
+  religion         String?
+  cwcCaseNumber    String?
+  guardianName     String?
+  guardianContact  String?
+  emergencyContact String?
+  educationalLevel String?
+  schoolName       String?
+  aadhaarEncrypted String?
+  photoUrl         String?
+  isActive         Boolean         @default(true)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  attendanceRecords AttendanceRecord[]
+  healthGrowth      HealthGrowth[]
+  vaccinations      Vaccination[]
+  illnesses         Illness[]
+  progressNotes     ProgressNote[]
+  caseEvents        CaseEvent[]
+}
+
+model AttendanceRecord {
+  id         String           @id @default(cuid())
+  childId    String
+  child      Child            @relation(fields: [childId], references: [id])
+  date       DateTime
+  sessionType SessionType
+  status     AttendanceStatus
+  note       String?
+  markedById String
+  createdAt  DateTime         @default(now())
+}
+
+model HealthGrowth {
+  id         String   @id @default(cuid())
+  childId    String
+  child      Child    @relation(fields: [childId], references: [id])
+  date       DateTime
+  heightCm   Float?
+  weightKg   Float?
+  bmi        Float?
+  measuredBy String
+  notes      String?
+  createdAt  DateTime @default(now())
+}
+
+model Vaccination {
+  id              String    @id @default(cuid())
+  childId         String
+  child           Child     @relation(fields: [childId], references: [id])
+  vaccineName     String
+  recommendedDate DateTime
+  givenDate       DateTime?
+  facility        String?
+  certificateUrl  String?
+  createdAt       DateTime  @default(now())
+}
+
+model Illness {
+  id               String   @id @default(cuid())
+  childId          String
+  child            Child    @relation(fields: [childId], references: [id])
+  date             DateTime
+  symptoms         String
+  diagnosis        String?
+  treatment        String?
+  hospitalReferred Boolean  @default(false)
+  outcome          String?
+  createdAt        DateTime @default(now())
+}
+
+model ProgressNote {
+  id                   String     @id @default(cuid())
+  childId              String
+  child                Child      @relation(fields: [childId], references: [id])
+  authorId             String
+  sessionType          String
+  programmeArea        Programme?
+  academicEngagement   Int?
+  literacyNumeracy     Int?
+  socioEmotional       Int?
+  lifeSkills           Int?
+  vocationalEngagement Int?
+  narrative            String?
+  photoUrl             String?
+  flagForFollowup      Boolean    @default(false)
+  isLocked             Boolean    @default(false)
+  createdAt            DateTime   @default(now())
+  updatedAt            DateTime   @updatedAt
+}
+
+model CaseEvent {
+  id          String        @id @default(cuid())
+  childId     String
+  child       Child         @relation(fields: [childId], references: [id])
+  eventType   CaseEventType
+  date        DateTime
+  description String
+  isSensitive Boolean       @default(false)
+  severity    IssueSeverity?
+  authorId    String
+  createdAt   DateTime      @default(now())
+
+  amendments CaseAmendment[]
+}
+
+model CaseAmendment {
+  id          String    @id @default(cuid())
+  caseEventId String
+  caseEvent   CaseEvent @relation(fields: [caseEventId], references: [id])
+  amendment   String
+  authorId    String
+  createdAt   DateTime  @default(now())
+}
+
+// ─── Volunteer Module ────────────────────────────────────────────────────────
+
+model VolunteerProfile {
+  id                    String              @id @default(cuid())
+  userId                String              @unique
+  user                  User                @relation(fields: [userId], references: [id])
+  organisation          String?
+  professionalDomain    ProfessionalDomain?
+  languages             String[]
+  availabilityDays      Int[]
+  hoursPerWeek          Int?
+  preferredProgrammes   Programme[]
+  preferredCCIId        String?
+  motivationStatement   String?
+  emergencyContact      String?
+  policeVerification    PoliceStatus        @default(NOT_SUBMITTED)
+  safeguardingStatus    SafeguardingStatus  @default(NOT_ATTEMPTED)
+  accountStatus         AccountStatus       @default(PENDING)
+  totalHours            Float               @default(0)
+  joinedDate            DateTime            @default(now())
+  idProofUrl            String?
+  photoUrl              String?
+  policeVerificationUrl String?
+  corporatePartner      String?
+  isOnLeaderboard       Boolean             @default(false)
+  city                  String?
+  approvedAt            DateTime?
+  approvedById          String?
+  rejectionReason       String?
+
+  skills             VolunteerSkill[]
+  availabilityBlocks VolunteerAvailability[]
+  eventRegistrations EventRegistration[]
+  badges             VolunteerBadge[]
+  hoursClaims        HoursClaim[]
+}
+
+model Skill {
+  id         String  @id @default(cuid())
+  name       String  @unique
+  isApproved Boolean @default(true)
+
+  volunteers    VolunteerSkill[]
+  opportunities OpportunitySkill[]
+}
+
+model VolunteerSkill {
+  volunteerId String
+  skillId     String
+  volunteer   VolunteerProfile @relation(fields: [volunteerId], references: [id])
+  skill       Skill            @relation(fields: [skillId], references: [id])
+
+  @@id([volunteerId, skillId])
+}
+
+model VolunteerAvailability {
+  id            String           @id @default(cuid())
+  volunteerId   String
+  volunteer     VolunteerProfile @relation(fields: [volunteerId], references: [id])
+  startDate     DateTime
+  endDate       DateTime
+  isUnavailable Boolean          @default(false)
+  createdAt     DateTime         @default(now())
+}
+
+model Opportunity {
+  id                String            @id @default(cuid())
+  title             String
+  programmeArea     ProgrammeArea
+  cciId             String?
+  dateTime          DateTime
+  durationMinutes   Int
+  location          String
+  requiredCount     Int
+  description       String?
+  safeguardingLevel SafeguardingLevel @default(NONE_REQUIRED)
+  status            OpportunityStatus @default(DRAFT)
+  createdById       String
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  requiredSkills OpportunitySkill[]
+  registrations  EventRegistration[]
+}
+
+model OpportunitySkill {
+  opportunityId String
+  skillId       String
+  opportunity   Opportunity @relation(fields: [opportunityId], references: [id])
+  skill         Skill       @relation(fields: [skillId], references: [id])
+
+  @@id([opportunityId, skillId])
+}
+
+model EventRegistration {
+  id            String             @id @default(cuid())
+  opportunityId String
+  volunteerId   String
+  opportunity   Opportunity        @relation(fields: [opportunityId], references: [id])
+  volunteer     VolunteerProfile   @relation(fields: [volunteerId], references: [id])
+  status        RegistrationStatus @default(REGISTERED)
+  attended      Boolean            @default(false)
+  hoursLogged   Float?
+  createdAt     DateTime           @default(now())
+}
+
+model HoursClaim {
+  id          String           @id @default(cuid())
+  volunteerId String
+  volunteer   VolunteerProfile @relation(fields: [volunteerId], references: [id])
+  description String
+  hours       Float
+  date        DateTime
+  status      ClaimStatus      @default(PENDING)
+  reviewedBy  String?
+  createdAt   DateTime         @default(now())
+}
+
+model Badge {
+  id          String       @id @default(cuid())
+  name        String       @unique
+  description String
+  trigger     BadgeTrigger
+  threshold   Int?
+
+  volunteers VolunteerBadge[]
+}
+
+model VolunteerBadge {
+  volunteerId String
+  badgeId     String
+  volunteer   VolunteerProfile @relation(fields: [volunteerId], references: [id])
+  badge       Badge            @relation(fields: [badgeId], references: [id])
+  earnedAt    DateTime         @default(now())
+
+  @@id([volunteerId, badgeId])
+}
+
+// ─── Cross-cutting ────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id         String      @id @default(cuid())
+  timestamp  DateTime    @default(now())
+  userId     String
+  user       User        @relation(fields: [userId], references: [id])
+  userRole   Role
+  entityType EntityType
+  entityId   String
+  action     AuditAction
+  oldValue   Json?
+  newValue   Json?
+  ipAddress  String?
+  device     String?
+  cciId      String?
+  cci        CCI?        @relation(fields: [cciId], references: [id])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id])
+  title     String
+  body      String
+  type      NotificationType
+  isRead    Boolean          @default(false)
+  data      Json?
+  createdAt DateTime         @default(now())
+}
