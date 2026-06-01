@@ -159,7 +159,7 @@ export default function CCIDetailPage() {
         <TabsContent value="compliance" className="space-y-3 mt-4">
           {canEdit && (
             <Dialog>
-              <DialogTrigger asChild>
+              <DialogTrigger>
                 <Button size="sm" variant="outline"><Plus className="w-4 h-4 mr-2" />Add Compliance Item</Button>
               </DialogTrigger>
               <DialogContent>
@@ -167,7 +167,7 @@ export default function CCIDetailPage() {
                 <div className="space-y-4 pt-2">
                   <div className="space-y-2">
                     <Label>Type</Label>
-                    <Select onValueChange={v => setComplianceForm(f => ({ ...f, type: v }))}>
+                    <Select onValueChage={v => setComplianceForm(f => ({ ...f, type: v }))}>
                       <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
                       <SelectContent>
                         {Object.entries(complianceTypeLabel).map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}
@@ -207,7 +207,7 @@ export default function CCIDetailPage() {
         <TabsContent value="visits" className="space-y-3 mt-4">
           {(user?.role === 'SUPER_ADMIN' || user?.role === 'PROGRAM_MANAGER' || user?.role === 'CCI_MANAGER') && (
             <Dialog>
-              <DialogTrigger asChild>
+              <DialogTrigger>
                 <Button size="sm" className="bg-orange-500 hover:bg-orange-600"><Plus className="w-4 h-4 mr-2" />Log Visit</Button>
               </DialogTrigger>
               <DialogContent>
@@ -258,7 +258,7 @@ export default function CCIDetailPage() {
         {/* Issues Tab */}
         <TabsContent value="issues" className="space-y-3 mt-4">
           <Dialog>
-            <DialogTrigger asChild>
+            <DialogTrigger>
               <Button size="sm" variant="outline"><Plus className="w-4 h-4 mr-2" />Log Issue</Button>
             </DialogTrigger>
             <DialogContent>
