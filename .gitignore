@@ -24,8 +24,6 @@ npm-debug.log*
 backend/uploads/*
 !backend/uploads/.gitkeep
 
-# Prisma
-backend/prisma/migrations/
 
 # TypeScript
 *.tsbuildinfo
