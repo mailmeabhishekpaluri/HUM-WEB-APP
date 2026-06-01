@@ -167,7 +167,7 @@ export default function CCIDetailPage() {
                 <div className="space-y-4 pt-2">
                   <div className="space-y-2">
                     <Label>Type</Label>
-                    <Select onValueChage={v => setComplianceForm(f => ({ ...f, type: v }))}>
+                    <Select onValueChange={v => setComplianceForm(f => ({ ...f, type: v }))}>
                       <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
                       <SelectContent>
                         {Object.entries(complianceTypeLabel).map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}
