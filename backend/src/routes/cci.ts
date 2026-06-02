@@ -11,6 +11,8 @@ import { z } from 'zod';
 
 const router = Router();
 router.use(requireAuth);
+// CCI module is staff-only; volunteers have no access to institution data
+router.use(requireRole('SUPER_ADMIN', 'PROGRAM_MANAGER', 'CCI_MANAGER', 'CCI_STAFF'));
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, 'uploads/'),

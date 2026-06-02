@@ -1,10 +1,13 @@
 import { Router } from 'express';
 import { requireAuth, AuthRequest } from '../middleware/auth';
+import { requireRole } from '../middleware/rbac';
 import { getDashboardStats } from '../services/cci.service';
 import { prisma } from '../lib/prisma';
 
 const router = Router();
 router.use(requireAuth);
+// Org-wide dashboards are staff-only; volunteers have their own personal dashboard
+router.use(requireRole('SUPER_ADMIN', 'PROGRAM_MANAGER', 'CCI_MANAGER', 'CCI_STAFF'));
 
 router.get('/stats', async (_req, res, next) => {
   try {
