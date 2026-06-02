@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   Building2, Users, Heart, BarChart3,
-  LogOut, Menu, Home
+  LogOut, Menu, Home, UserCog, UserCheck
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { NotificationBell } from '@/components/shared/NotificationBell';
@@ -20,6 +20,8 @@ const navItems = [
   { href: '/volunteers', label: 'Volunteers', icon: Users, roles: ['SUPER_ADMIN', 'PROGRAM_MANAGER', 'CCI_MANAGER'] },
   { href: '/opportunities', label: 'Opportunities', icon: Users, roles: ['SUPER_ADMIN', 'PROGRAM_MANAGER', 'VOLUNTEER'] },
   { href: '/reports', label: 'Reports', icon: BarChart3, roles: ['SUPER_ADMIN', 'PROGRAM_MANAGER', 'CCI_MANAGER'] },
+  { href: '/volunteers/pending', label: 'Approvals', icon: UserCheck, roles: ['SUPER_ADMIN', 'PROGRAM_MANAGER'] },
+  { href: '/users', label: 'Team', icon: UserCog, roles: ['SUPER_ADMIN'] },
 ];
 
 interface SidebarProps {

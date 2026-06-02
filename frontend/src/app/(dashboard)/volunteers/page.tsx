@@ -7,9 +7,12 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Users, Search, Clock, CheckCircle, AlertCircle } from 'lucide-react';
+import { Users, Search, CheckCircle, Share2, Clock, PauseCircle, ArrowRight } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
+import { toast as sonnerToast } from 'sonner';
+
+const REGISTRATION_LINK = 'https://hum-web-app.vercel.app/volunteer/register';
 
 interface Volunteer {
   id: string;
@@ -28,36 +31,31 @@ export default function VolunteersPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [volunteers, setVolunteers] = useState<Volunteer[]>([]);
-  const [pending, setPending] = useState<Volunteer[]>([]);
+  const [onHold, setOnHold] = useState<Volunteer[]>([]);
+  const [pendingCount, setPendingCount] = useState(0);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
 
   async function load() {
     try {
-      const [allRes, pendingRes] = await Promise.all([
+      const [allRes, pendingRes, holdRes] = await Promise.all([
         api.get('/volunteers?status=ACTIVE'),
         api.get('/volunteers/pending'),
+        api.get('/volunteers?status=ON_HOLD').catch(() => ({ data: [] })),
       ]);
       setVolunteers(allRes.data);
-      setPending(pendingRes.data);
+      setPendingCount(Array.isArray(pendingRes.data) ? pendingRes.data.length : 0);
+      setOnHold(holdRes.data);
     } finally { setLoading(false); }
   }
   useEffect(() => { load(); }, []);
 
-  async function approve(userId: string) {
-    try {
-      await api.patch(`/volunteers/${userId}/approve`);
-      toast({ title: 'Volunteer approved' });
-      load();
-    } catch { toast({ title: 'Error', variant: 'destructive' }); }
-  }
-
-  async function reject(userId: string) {
-    try {
-      await api.patch(`/volunteers/${userId}/reject`, { reason: 'Does not meet requirements' });
-      toast({ title: 'Volunteer rejected' });
-      load();
-    } catch { toast({ title: 'Error', variant: 'destructive' }); }
+  function copyLink() {
+    navigator.clipboard.writeText(REGISTRATION_LINK).then(() => {
+      sonnerToast.success('Link copied!', { description: REGISTRATION_LINK });
+    }).catch(() => {
+      sonnerToast.error('Could not copy link');
+    });
   }
 
   const filtered = volunteers.filter(v =>
@@ -70,14 +68,37 @@ export default function VolunteersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Volunteers</h1>
-          <p className="text-slate-500 text-sm mt-1">{volunteers.length} active · {pending.length} pending</p>
+          <p className="text-slate-500 text-sm mt-1">{volunteers.length} active · {pendingCount} pending</p>
         </div>
+        <Button
+          variant="outline"
+          className="gap-2 border-[#3191c2] text-[#3191c2] hover:bg-[#e8f4f9]"
+          onClick={copyLink}
+        >
+          <Share2 className="w-4 h-4" />
+          Share Registration Link
+        </Button>
       </div>
 
       <Tabs defaultValue="active">
         <TabsList>
-          <TabsTrigger value="active">Active ({volunteers.length})</TabsTrigger>
-          <TabsTrigger value="pending">Pending Approval ({pending.length})</TabsTrigger>
+          <TabsTrigger value="active" className="gap-2">
+            <CheckCircle className="w-3.5 h-3.5" />
+            Active ({volunteers.length})
+          </TabsTrigger>
+          <TabsTrigger value="pending" className="gap-2">
+            <Clock className="w-3.5 h-3.5" />
+            Pending
+            {pendingCount > 0 && (
+              <span className="ml-1 rounded-full bg-amber-100 text-amber-700 text-xs font-semibold px-1.5 py-0.5">
+                {pendingCount}
+              </span>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="onhold" className="gap-2">
+            <PauseCircle className="w-3.5 h-3.5" />
+            On Hold ({onHold.length})
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="active" className="mt-4 space-y-4">
@@ -131,32 +152,40 @@ export default function VolunteersPage() {
         </TabsContent>
 
         <TabsContent value="pending" className="mt-4">
-          {pending.length === 0 ? (
-            <div className="text-center py-16 text-slate-400"><CheckCircle className="w-10 h-10 mx-auto mb-3 opacity-30" /><p>No pending approvals</p></div>
+          <div className="rounded-lg border bg-amber-50 border-amber-200 p-5 flex items-center justify-between gap-4">
+            <div>
+              <p className="font-semibold text-amber-900">
+                {pendingCount > 0 ? `${pendingCount} volunteer${pendingCount === 1 ? '' : 's'} awaiting approval` : 'No pending approvals right now'}
+              </p>
+              <p className="text-sm text-amber-700 mt-0.5">Review and approve or reject each application from the approvals queue.</p>
+            </div>
+            <Link href="/volunteers/pending">
+              <Button className="bg-[#3191c2] hover:bg-[#2a7fa8] text-white gap-2 shrink-0">
+                Go to Approvals
+                <ArrowRight className="w-4 h-4" />
+              </Button>
+            </Link>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="onhold" className="mt-4">
+          {loading ? (
+            <div className="space-y-2">{[1,2].map(i => <div key={i} className="h-20 bg-slate-100 rounded-lg animate-pulse" />)}</div>
+          ) : onHold.length === 0 ? (
+            <div className="text-center py-16 text-slate-400"><PauseCircle className="w-10 h-10 mx-auto mb-3 opacity-30" /><p>No volunteers on hold</p></div>
           ) : (
-            <div className="space-y-3">
-              {pending.map(v => (
-                <Card key={v.id}>
-                  <CardContent className="py-4 px-4">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <p className="font-medium">{v.user.name}</p>
-                        <p className="text-sm text-slate-500">{v.user.email} · {v.city}</p>
-                        <div className="flex gap-2 mt-2 flex-wrap">
-                          <span className={`text-xs px-2 py-0.5 rounded-full ${v.safeguardingStatus === 'PASS' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
-                            Quiz: {v.safeguardingStatus}
-                          </span>
-                          <span className={`text-xs px-2 py-0.5 rounded-full ${v.policeVerification === 'VERIFIED' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                            PV: {v.policeVerification.replace('_', ' ')}
-                          </span>
-                        </div>
+            <div className="space-y-2">
+              {onHold.map(v => (
+                <Card key={v.id} className="hover:shadow-sm transition-shadow">
+                  <CardContent className="py-3 px-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 font-semibold text-sm">
+                        {v.user.name[0]}
                       </div>
-                      {(user?.role === 'SUPER_ADMIN' || user?.role === 'PROGRAM_MANAGER') && (
-                        <div className="flex gap-2 shrink-0">
-                          <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => approve(v.userId)}>Approve</Button>
-                          <Button size="sm" variant="outline" onClick={() => reject(v.userId)}>Reject</Button>
-                        </div>
-                      )}
+                      <div>
+                        <p className="font-medium text-sm">{v.user.name}</p>
+                        <p className="text-xs text-slate-400">{v.city} · {v.user.email}</p>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
