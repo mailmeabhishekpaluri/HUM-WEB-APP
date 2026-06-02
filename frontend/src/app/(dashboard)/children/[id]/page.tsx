@@ -70,7 +70,7 @@ export default function ChildDetailPage() {
     } catch { toast({ title: 'Error', variant: 'destructive' }); }
   }
 
-  if (loading) return <div className="p-6 flex justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500" /></div>;
+  if (loading) return <div className="p-6 flex justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#3191c2]" /></div>;
   if (!child) return <div className="p-6">Child not found</div>;
 
   function getAge(dob: string) { return Math.floor((Date.now() - new Date(dob).getTime()) / (365.25 * 24 * 60 * 60 * 1000)); }
@@ -136,7 +136,7 @@ export default function ChildDetailPage() {
                       <div className="space-y-1"><Label>Height (cm)</Label><Input type="number" value={growthForm.heightCm} onChange={e => setGrowthForm(f => ({ ...f, heightCm: e.target.value }))} /></div>
                       <div className="space-y-1"><Label>Weight (kg)</Label><Input type="number" step="0.1" value={growthForm.weightKg} onChange={e => setGrowthForm(f => ({ ...f, weightKg: e.target.value }))} /></div>
                       <div className="space-y-1"><Label>Notes</Label><Textarea value={growthForm.notes} onChange={e => setGrowthForm(f => ({ ...f, notes: e.target.value }))} rows={2} /></div>
-                      <Button onClick={addGrowth} className="w-full bg-orange-500 hover:bg-orange-600">Save</Button>
+                      <Button onClick={addGrowth} className="w-full bg-[#3191c2] hover:bg-[#2a7fa8]">Save</Button>
                     </div>
                   </DialogContent>
                 </Dialog>
@@ -149,7 +149,7 @@ export default function ChildDetailPage() {
                       <div className="space-y-1"><Label>Recommended Date</Label><Input type="date" value={vaccineForm.recommendedDate} onChange={e => setVaccineForm(f => ({ ...f, recommendedDate: e.target.value }))} /></div>
                       <div className="space-y-1"><Label>Given Date (if administered)</Label><Input type="date" value={vaccineForm.givenDate} onChange={e => setVaccineForm(f => ({ ...f, givenDate: e.target.value }))} /></div>
                       <div className="space-y-1"><Label>Facility</Label><Input value={vaccineForm.facility} onChange={e => setVaccineForm(f => ({ ...f, facility: e.target.value }))} /></div>
-                      <Button onClick={addVaccine} className="w-full bg-orange-500 hover:bg-orange-600">Save</Button>
+                      <Button onClick={addVaccine} className="w-full bg-[#3191c2] hover:bg-[#2a7fa8]">Save</Button>
                     </div>
                   </DialogContent>
                 </Dialog>
@@ -196,7 +196,7 @@ export default function ChildDetailPage() {
         <TabsContent value="progress" className="space-y-4 mt-4">
           {canEdit && (
             <Dialog>
-              <DialogTrigger asChild><Button size="sm" className="bg-orange-500 hover:bg-orange-600"><Plus className="w-4 h-4 mr-1" />Add Progress Note</Button></DialogTrigger>
+              <DialogTrigger asChild><Button size="sm" className="bg-[#3191c2] hover:bg-[#2a7fa8]"><Plus className="w-4 h-4 mr-1" />Add Progress Note</Button></DialogTrigger>
               <DialogContent>
                 <DialogHeader><DialogTitle>Progress Note</DialogTitle></DialogHeader>
                 <div className="space-y-3 pt-2">
@@ -221,7 +221,7 @@ export default function ChildDetailPage() {
                     </div>
                   ))}
                   <div className="space-y-1"><Label>Narrative (optional)</Label><Textarea value={progressForm.narrative} onChange={e => setProgressForm(f => ({ ...f, narrative: e.target.value }))} rows={3} /></div>
-                  <Button onClick={addProgress} className="w-full bg-orange-500 hover:bg-orange-600">Save Note</Button>
+                  <Button onClick={addProgress} className="w-full bg-[#3191c2] hover:bg-[#2a7fa8]">Save Note</Button>
                 </div>
               </DialogContent>
             </Dialog>
@@ -282,7 +282,7 @@ export default function ChildDetailPage() {
                     <input type="checkbox" id="sensitive" checked={caseForm.isSensitive} onChange={e => setCaseForm(f => ({ ...f, isSensitive: e.target.checked }))} />
                     <Label htmlFor="sensitive" className="text-sm">Mark as Sensitive (restrict to PM/Admin)</Label>
                   </div>
-                  <Button onClick={addCase} className="w-full bg-orange-500 hover:bg-orange-600">Record</Button>
+                  <Button onClick={addCase} className="w-full bg-[#3191c2] hover:bg-[#2a7fa8]">Record</Button>
                 </div>
               </DialogContent>
             </Dialog>
@@ -291,7 +291,7 @@ export default function ChildDetailPage() {
             <div className="space-y-2 relative border-l-2 border-slate-200 ml-3 pl-4">
               {child.caseEvents.map((ev: any) => (
                 <div key={ev.id} className="relative">
-                  <div className="absolute -left-6 top-2 w-3 h-3 rounded-full bg-orange-400 border-2 border-white" />
+                  <div className="absolute -left-6 top-2 w-3 h-3 rounded-full bg-[#3191c2] border-2 border-white" />
                   <Card>
                     <CardContent className="pt-3 pb-3">
                       <div className="flex justify-between items-start">

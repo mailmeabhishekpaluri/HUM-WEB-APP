@@ -5,10 +5,10 @@ const prisma = new PrismaClient();
 
 async function main() {
   const superAdmin = await prisma.user.upsert({
-    where: { email: 'admin@humanityorg.in' },
+    where: { email: 'admin@humanityorg.foundation' },
     update: {},
     create: {
-      email: 'admin@humanityorg.in',
+      email: 'admin@humanityorg.foundation',
       name: 'Super Admin',
       role: Role.SUPER_ADMIN,
       passwordHash: await bcrypt.hash('Admin@123', 10),
@@ -16,10 +16,10 @@ async function main() {
   });
 
   await prisma.user.upsert({
-    where: { email: 'priya@humanityorg.in' },
+    where: { email: 'priya@humanityorg.foundation' },
     update: {},
     create: {
-      email: 'priya@humanityorg.in',
+      email: 'priya@humanityorg.foundation',
       name: 'Priya Sharma',
       role: Role.PROGRAM_MANAGER,
       passwordHash: await bcrypt.hash('Manager@123', 10),
@@ -49,7 +49,7 @@ async function main() {
     await prisma.badge.upsert({ where: { name: b.name }, update: {}, create: b });
   }
 
-  console.log('Seed complete. Admin: admin@humanityorg.in / Admin@123');
+  console.log('Seed complete. Admin: admin@humanityorg.foundation / Admin@123');
 }
 
 main().catch(console.error).finally(() => prisma.$disconnect());

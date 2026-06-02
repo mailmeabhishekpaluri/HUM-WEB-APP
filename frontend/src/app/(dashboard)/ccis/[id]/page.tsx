@@ -90,7 +90,7 @@ export default function CCIDetailPage() {
     } catch { toast({ title: 'Error', variant: 'destructive' }); }
   }
 
-  if (loading) return <div className="p-6 flex justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500" /></div>;
+  if (loading) return <div className="p-6 flex justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#3191c2]" /></div>;
   if (!cci) return <div className="p-6 text-slate-500">CCI not found</div>;
 
   const scoreColor = cci.complianceScore >= 80 ? 'text-green-600' : cci.complianceScore >= 50 ? 'text-amber-500' : 'text-red-600';
@@ -132,7 +132,7 @@ export default function CCIDetailPage() {
             <p className="text-xs text-slate-500 mb-1">Occupancy</p>
             <div className="text-2xl font-bold">{cci.currentOccupancy} <span className="text-sm font-normal text-slate-500">/ {totalCapacity}</span></div>
             <div className="w-full bg-slate-100 rounded-full h-2 mt-2">
-              <div className="bg-orange-500 h-2 rounded-full" style={{ width: `${Math.min(100, (cci.currentOccupancy / Math.max(1, totalCapacity)) * 100)}%` }} />
+              <div className="bg-[#3191c2] h-2 rounded-full" style={{ width: `${Math.min(100, (cci.currentOccupancy / Math.max(1, totalCapacity)) * 100)}%` }} />
             </div>
             <p className="text-xs text-slate-400 mt-1">Boys: {cci.sanctionedCapacityBoys} | Girls: {cci.sanctionedCapacityGirls}</p>
           </CardContent>
@@ -178,7 +178,7 @@ export default function CCIDetailPage() {
                     <Label>Due Date</Label>
                     <Input type="date" value={complianceForm.dueDate} onChange={e => setComplianceForm(f => ({ ...f, dueDate: e.target.value }))} />
                   </div>
-                  <Button onClick={addCompliance} className="w-full bg-orange-500 hover:bg-orange-600">Add</Button>
+                  <Button onClick={addCompliance} className="w-full bg-[#3191c2] hover:bg-[#2a7fa8]">Add</Button>
                 </div>
               </DialogContent>
             </Dialog>
@@ -208,7 +208,7 @@ export default function CCIDetailPage() {
           {(user?.role === 'SUPER_ADMIN' || user?.role === 'PROGRAM_MANAGER' || user?.role === 'CCI_MANAGER') && (
             <Dialog>
               <DialogTrigger asChild>
-                <Button size="sm" className="bg-orange-500 hover:bg-orange-600"><Plus className="w-4 h-4 mr-2" />Log Visit</Button>
+                <Button size="sm" className="bg-[#3191c2] hover:bg-[#2a7fa8]"><Plus className="w-4 h-4 mr-2" />Log Visit</Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader><DialogTitle>Log CCI Visit</DialogTitle></DialogHeader>
@@ -230,7 +230,7 @@ export default function CCIDetailPage() {
                     <Label>Observations</Label>
                     <Textarea value={visitForm.observations} onChange={e => setVisitForm(f => ({ ...f, observations: e.target.value }))} rows={3} />
                   </div>
-                  <Button onClick={logVisit} className="w-full bg-orange-500 hover:bg-orange-600">Save Visit Log</Button>
+                  <Button onClick={logVisit} className="w-full bg-[#3191c2] hover:bg-[#2a7fa8]">Save Visit Log</Button>
                 </div>
               </DialogContent>
             </Dialog>
@@ -281,7 +281,7 @@ export default function CCIDetailPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <Button onClick={createIssue} className="w-full bg-orange-500 hover:bg-orange-600">Submit</Button>
+                <Button onClick={createIssue} className="w-full bg-[#3191c2] hover:bg-[#2a7fa8]">Submit</Button>
               </div>
             </DialogContent>
           </Dialog>
@@ -293,7 +293,7 @@ export default function CCIDetailPage() {
                 <div key={issue.id} className="p-3 bg-white border rounded-lg">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-medium">{issue.title}</p>
-                    <span className={`text-xs font-medium ${issue.severity === 'CRITICAL' ? 'text-red-600' : issue.severity === 'HIGH' ? 'text-orange-600' : issue.severity === 'MEDIUM' ? 'text-amber-600' : 'text-slate-500'}`}>{issue.severity}</span>
+                    <span className={`text-xs font-medium ${issue.severity === 'CRITICAL' ? 'text-red-600' : issue.severity === 'HIGH' ? 'text-[#3191c2]' : issue.severity === 'MEDIUM' ? 'text-amber-600' : 'text-slate-500'}`}>{issue.severity}</span>
                   </div>
                   <p className="text-xs text-slate-500 mt-1">{issue.description}</p>
                 </div>

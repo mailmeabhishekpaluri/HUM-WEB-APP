@@ -55,7 +55,7 @@ export default function OpportunitiesPage() {
         </div>
         {canCreate && (
           <Link href="/opportunities/new">
-            <Button className="bg-orange-500 hover:bg-orange-600"><Plus className="w-4 h-4 mr-2" />Create</Button>
+            <Button className="bg-[#3191c2] hover:bg-[#2a7fa8]"><Plus className="w-4 h-4 mr-2" />Create</Button>
           </Link>
         )}
       </div>
@@ -89,7 +89,7 @@ export default function OpportunitiesPage() {
                 )}
                 {opp.description && <p className="text-xs text-slate-500 line-clamp-2">{opp.description}</p>}
                 {user?.role === 'VOLUNTEER' && opp.status === 'OPEN' && (
-                  <Button size="sm" className="w-full mt-2 bg-orange-500 hover:bg-orange-600" onClick={() => register(opp.id)}>
+                  <Button size="sm" className="w-full mt-2 bg-[#3191c2] hover:bg-[#2a7fa8]" onClick={() => register(opp.id)}>
                     Register
                   </Button>
                 )}

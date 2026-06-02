@@ -35,7 +35,7 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-slate-600">Total CCIs</CardTitle>
-            <Building2 className="w-4 h-4 text-orange-500" />
+            <Building2 className="w-4 h-4 text-[#3191c2]" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.totalCCIs ?? '—'}</div>
@@ -89,10 +89,10 @@ export default function DashboardPage() {
         <Card>
           <CardHeader><CardTitle className="text-base">Quick Links</CardTitle></CardHeader>
           <CardContent className="space-y-2">
-            <a href="/ccis/new" className="block text-sm text-orange-600 hover:underline">+ Register new CCI</a>
-            <a href="/children/new" className="block text-sm text-orange-600 hover:underline">+ Add child profile</a>
-            <a href="/opportunities/new" className="block text-sm text-orange-600 hover:underline">+ Create volunteer opportunity</a>
-            <a href="/reports" className="block text-sm text-orange-600 hover:underline">→ Generate reports</a>
+            <a href="/ccis/new" className="block text-sm text-[#3191c2] hover:underline">+ Register new CCI</a>
+            <a href="/children/new" className="block text-sm text-[#3191c2] hover:underline">+ Add child profile</a>
+            <a href="/opportunities/new" className="block text-sm text-[#3191c2] hover:underline">+ Create volunteer opportunity</a>
+            <a href="/reports" className="block text-sm text-[#3191c2] hover:underline">→ Generate reports</a>
           </CardContent>
         </Card>
       </div>

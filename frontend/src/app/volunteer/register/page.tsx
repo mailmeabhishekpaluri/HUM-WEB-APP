@@ -64,7 +64,7 @@ export default function VolunteerRegisterPage() {
       <Card className="w-full max-w-md">
         <CardHeader>
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center"><span className="text-white font-bold text-sm">H</span></div>
+            <div className="w-8 h-8 bg-[#3191c2] rounded-lg flex items-center justify-center"><span className="text-white font-bold text-sm">H</span></div>
             <span className="font-semibold">HUManity Foundation</span>
           </div>
           <CardTitle>Become a Volunteer</CardTitle>
@@ -77,7 +77,7 @@ export default function VolunteerRegisterPage() {
             <div className="space-y-2"><Label>Mobile *</Label><Input value={form.mobile} onChange={setI('mobile')} required /></div>
             <div className="space-y-2"><Label>City *</Label><Input value={form.city} onChange={setI('city')} required /></div>
             <div className="space-y-2"><Label>Password *</Label><Input type="password" value={form.password} onChange={setI('password')} required /></div>
-            <Button type="submit" className="w-full bg-orange-500 hover:bg-orange-600" disabled={regLoading}>
+            <Button type="submit" className="w-full bg-[#3191c2] hover:bg-[#2a7fa8]" disabled={regLoading}>
               {regLoading ? 'Registering…' : 'Register & Continue to Quiz →'}
             </Button>
           </form>
@@ -101,8 +101,8 @@ export default function VolunteerRegisterPage() {
               <p className="font-medium text-sm mb-3">{idx + 1}. {q.question}</p>
               <div className="space-y-2">
                 {q.options.map((opt, optIdx) => (
-                  <label key={optIdx} className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${answers[q.id] === optIdx ? 'bg-orange-50 border-orange-400' : 'hover:bg-slate-50'}`}>
-                    <input type="radio" name={`q-${q.id}`} value={optIdx} checked={answers[q.id] === optIdx} onChange={() => setAnswers(a => ({ ...a, [q.id]: optIdx }))} className="accent-orange-500" />
+                  <label key={optIdx} className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${answers[q.id] === optIdx ? 'bg-[#e8f4f9] border-[#3191c2]' : 'hover:bg-slate-50'}`}>
+                    <input type="radio" name={`q-${q.id}`} value={optIdx} checked={answers[q.id] === optIdx} onChange={() => setAnswers(a => ({ ...a, [q.id]: optIdx }))} className="accent-[#3191c2]" />
                     <span className="text-sm">{opt}</span>
                   </label>
                 ))}
@@ -110,7 +110,7 @@ export default function VolunteerRegisterPage() {
             </CardContent>
           </Card>
         ))}
-        <Button onClick={submitQuiz} className="w-full bg-orange-500 hover:bg-orange-600" disabled={quizLoading}>
+        <Button onClick={submitQuiz} className="w-full bg-[#3191c2] hover:bg-[#2a7fa8]" disabled={quizLoading}>
           {quizLoading ? 'Submitting…' : 'Submit Quiz'}
         </Button>
       </div>
@@ -129,7 +129,7 @@ export default function VolunteerRegisterPage() {
           {quizResult?.passed ? (
             <div className="space-y-2">
               <p className="text-sm text-slate-500">Your profile is now in the approval queue. A Program Manager will review and activate your account within 5 working days.</p>
-              <Button className="w-full bg-orange-500 hover:bg-orange-600" onClick={() => router.push('/login')}>Go to Login →</Button>
+              <Button className="w-full bg-[#3191c2] hover:bg-[#2a7fa8]" onClick={() => router.push('/login')}>Go to Login →</Button>
             </div>
           ) : (
             <div className="space-y-2">

@@ -99,7 +99,7 @@ export default function NewOpportunityPage() {
           </CardContent>
         </Card>
         <div className="flex gap-3">
-          <Button type="submit" className="bg-orange-500 hover:bg-orange-600" disabled={loading}>{loading ? 'Publishing…' : 'Publish Opportunity'}</Button>
+          <Button type="submit" className="bg-[#3191c2] hover:bg-[#2a7fa8]" disabled={loading}>{loading ? 'Publishing…' : 'Publish Opportunity'}</Button>
           <Link href="/opportunities"><Button type="button" variant="outline">Cancel</Button></Link>
         </div>
       </form>

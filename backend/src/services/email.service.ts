@@ -10,7 +10,7 @@ const transporter = nodemailer.createTransport({
 export async function sendEmail(to: string, subject: string, html: string) {
   try {
     await transporter.sendMail({
-      from: process.env.SMTP_FROM || 'noreply@humanityorg.in',
+      from: process.env.SMTP_FROM || 'noreply@humanityorg.foundation',
       to,
       subject,
       html,

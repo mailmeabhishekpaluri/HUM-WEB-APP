@@ -91,7 +91,7 @@ export default function ReportsPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-slate-500">Sex-disaggregated beneficiary counts per CCI</p>
-            <Button size="sm" className="bg-orange-500 hover:bg-orange-600 w-full" onClick={() => runReport('beneficiary')} disabled={loading === 'beneficiary'}>
+            <Button size="sm" className="bg-[#3191c2] hover:bg-[#2a7fa8] w-full" onClick={() => runReport('beneficiary')} disabled={loading === 'beneficiary'}>
               {loading === 'beneficiary' ? 'Generating…' : 'Generate'}
             </Button>
             {beneficiaryData && (
@@ -126,7 +126,7 @@ export default function ReportsPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-slate-500">Hours logged per volunteer, by programme</p>
-            <Button size="sm" className="bg-orange-500 hover:bg-orange-600 w-full" onClick={() => runReport('volunteer-hours')} disabled={loading === 'volunteer-hours'}>
+            <Button size="sm" className="bg-[#3191c2] hover:bg-[#2a7fa8] w-full" onClick={() => runReport('volunteer-hours')} disabled={loading === 'volunteer-hours'}>
               {loading === 'volunteer-hours' ? 'Generating…' : 'Generate'}
             </Button>
             {volunteerData && (
@@ -155,7 +155,7 @@ export default function ReportsPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-slate-500">Compliance scores across all CCIs</p>
-            <Button size="sm" className="bg-orange-500 hover:bg-orange-600 w-full" onClick={() => runReport('compliance')} disabled={loading === 'compliance'}>
+            <Button size="sm" className="bg-[#3191c2] hover:bg-[#2a7fa8] w-full" onClick={() => runReport('compliance')} disabled={loading === 'compliance'}>
               {loading === 'compliance' ? 'Generating…' : 'Generate'}
             </Button>
             {complianceData && (
@@ -186,7 +186,7 @@ export default function ReportsPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-slate-500">Attendance rates per child with date range filter</p>
-            <Button size="sm" className="bg-orange-500 hover:bg-orange-600 w-full" onClick={() => runReport('attendance')} disabled={loading === 'attendance'}>
+            <Button size="sm" className="bg-[#3191c2] hover:bg-[#2a7fa8] w-full" onClick={() => runReport('attendance')} disabled={loading === 'attendance'}>
               {loading === 'attendance' ? 'Generating…' : 'Generate'}
             </Button>
             {attendanceData && (

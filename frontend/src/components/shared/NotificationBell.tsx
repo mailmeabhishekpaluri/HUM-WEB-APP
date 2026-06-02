@@ -67,7 +67,7 @@ export function NotificationBell() {
             <p className="text-slate-400 text-sm text-center py-8">No notifications</p>
           ) : (
             notifications.map(n => (
-              <div key={n.id} className={`p-3 rounded-lg border text-sm ${n.isRead ? 'bg-white' : 'bg-orange-50 border-orange-200'}`}>
+              <div key={n.id} className={`p-3 rounded-lg border text-sm ${n.isRead ? 'bg-white' : 'bg-[#e8f4f9] border-[#3191c2]'}`}>
                 <div className="flex items-start gap-2">
                   <span className="text-lg shrink-0">{typeIcon[n.type] || '🔔'}</span>
                   <div className="flex-1 min-w-0">

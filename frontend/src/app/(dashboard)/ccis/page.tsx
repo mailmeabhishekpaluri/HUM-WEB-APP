@@ -60,7 +60,7 @@ export default function CCIsPage() {
         </div>
         {canCreate && (
           <Link href="/ccis/new">
-            <Button className="bg-orange-500 hover:bg-orange-600">
+            <Button className="bg-[#3191c2] hover:bg-[#2a7fa8]">
               <Plus className="w-4 h-4 mr-2" /> Register CCI
             </Button>
           </Link>
