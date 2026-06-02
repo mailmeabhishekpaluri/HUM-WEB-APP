@@ -255,15 +255,16 @@ enum NotificationType {
 // ─── Users & Auth ────────────────────────────────────────────────────────────
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  mobile       String?  @unique
-  passwordHash String?
-  role         Role
-  name         String
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id            String        @id @default(cuid())
+  email         String        @unique
+  mobile        String?       @unique
+  passwordHash  String?
+  role          Role
+  name          String
+  isActive      Boolean       @default(true)
+  accountStatus AccountStatus @default(PENDING)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
   managedCCIs      UserCCI[]
   auditLogs        AuditLog[]

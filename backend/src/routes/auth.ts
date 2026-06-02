@@ -24,7 +24,7 @@ router.post('/refresh', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-router.post('/users', requireAuth, requireRole('SUPER_ADMIN'), async (req: AuthRequest, res, next) => {
+router.post('/users', requireAuth, requireRole('SUPER_ADMIN', 'PROGRAM_MANAGER'), async (req: AuthRequest, res, next) => {
   try {
     const data = registerSchema.parse(req.body);
     const user = await createUser(data as { email: string; password: string; name: string; role: Role; mobile?: string });
@@ -49,7 +49,46 @@ router.patch('/users/:userId/deactivate', requireAuth, requireRole('SUPER_ADMIN'
     const { prisma } = await import('../lib/prisma');
     const user = await prisma.user.update({
       where: { id: req.params.userId },
-      data: { accountStatus: 'SUSPENDED' },
+      data: { accountStatus: 'DEACTIVATED' },
+      select: { id: true, name: true, email: true, role: true, accountStatus: true },
+    });
+    res.json(user);
+  } catch (err) { next(err); }
+});
+
+router.post('/change-password', requireAuth, async (req: AuthRequest, res, next) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword)
+      return res.status(400).json({ error: 'currentPassword and newPassword required' });
+    if (newPassword.length < 8)
+      return res.status(400).json({ error: 'Password must be at least 8 characters' });
+
+    const { prisma } = await import('../lib/prisma');
+    const bcrypt = await import('bcryptjs');
+
+    const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    if (!user.passwordHash) return res.status(400).json({ error: 'Account has no password set' });
+    const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!valid) return res.status(401).json({ error: 'Current password is incorrect' });
+
+    const hash = await bcrypt.hash(newPassword, 10);
+    await prisma.user.update({
+      where: { id: req.user!.id },
+      data: { passwordHash: hash },
+    });
+    res.json({ message: 'Password changed successfully' });
+  } catch (err) { next(err); }
+});
+
+router.post('/complete-setup', requireAuth, async (req: AuthRequest, res, next) => {
+  try {
+    const { prisma } = await import('../lib/prisma');
+    const user = await prisma.user.update({
+      where: { id: req.user!.id },
+      data: { accountStatus: 'ACTIVE' },
       select: { id: true, name: true, email: true, role: true, accountStatus: true },
     });
     res.json(user);

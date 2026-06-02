@@ -7,13 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Users, Search, CheckCircle, Share2, Clock, PauseCircle, ArrowRight } from 'lucide-react';
-import { useAuth } from '@/lib/auth';
-import { useToast } from '@/hooks/use-toast';
-import { toast as sonnerToast } from 'sonner';
-
-const REGISTRATION_LINK = 'https://hum-web-app.vercel.app/volunteer/register';
-
+import { Users, Search, CheckCircle, Clock, PauseCircle, ArrowRight } from 'lucide-react';
 interface Volunteer {
   id: string;
   userId: string;
@@ -28,8 +22,6 @@ interface Volunteer {
 }
 
 export default function VolunteersPage() {
-  const { user } = useAuth();
-  const { toast } = useToast();
   const [volunteers, setVolunteers] = useState<Volunteer[]>([]);
   const [onHold, setOnHold] = useState<Volunteer[]>([]);
   const [pendingCount, setPendingCount] = useState(0);
@@ -50,14 +42,6 @@ export default function VolunteersPage() {
   }
   useEffect(() => { load(); }, []);
 
-  function copyLink() {
-    navigator.clipboard.writeText(REGISTRATION_LINK).then(() => {
-      sonnerToast.success('Link copied!', { description: REGISTRATION_LINK });
-    }).catch(() => {
-      sonnerToast.error('Could not copy link');
-    });
-  }
-
   const filtered = volunteers.filter(v =>
     !search || v.user.name.toLowerCase().includes(search.toLowerCase()) ||
     v.user.email.includes(search) || (v.city || '').toLowerCase().includes(search.toLowerCase())
@@ -70,14 +54,6 @@ export default function VolunteersPage() {
           <h1 className="text-2xl font-bold text-slate-900">Volunteers</h1>
           <p className="text-slate-500 text-sm mt-1">{volunteers.length} active · {pendingCount} pending</p>
         </div>
-        <Button
-          variant="outline"
-          className="gap-2 border-[#3191c2] text-[#3191c2] hover:bg-[#e8f4f9]"
-          onClick={copyLink}
-        >
-          <Share2 className="w-4 h-4" />
-          Share Registration Link
-        </Button>
       </div>
 
       <Tabs defaultValue="active">

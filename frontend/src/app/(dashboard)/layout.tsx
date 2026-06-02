@@ -73,6 +73,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   useEffect(() => {
     if (!loading && !user) router.push('/login');
+    if (!loading && user && user.accountStatus === 'PENDING') router.push('/setup');
   }, [user, loading, router]);
 
   if (loading) {

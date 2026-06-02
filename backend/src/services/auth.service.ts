@@ -43,7 +43,7 @@ export async function createUser(data: {
   if (existing) throw new Error('Email already registered');
   const passwordHash = await bcrypt.hash(data.password, 10);
   return prisma.user.create({
-    data: { email: data.email, name: data.name, role: data.role, mobile: data.mobile, passwordHash },
+    data: { email: data.email, name: data.name, role: data.role, mobile: data.mobile, passwordHash, accountStatus: 'PENDING' },
     select: { id: true, email: true, name: true, role: true },
   });
 }

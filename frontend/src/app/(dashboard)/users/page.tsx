@@ -15,6 +15,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { UserCog, UserPlus, Shield } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { InfoIcon } from 'lucide-react';
 
 interface TeamMember {
   id: string;
@@ -30,6 +31,7 @@ const ROLE_LABELS: Record<string, string> = {
   PROGRAM_MANAGER: 'Program Manager',
   CCI_MANAGER: 'CCI Manager',
   CCI_STAFF: 'CCI Staff',
+  VOLUNTEER: 'Volunteer',
 };
 
 const ROLE_COLORS: Record<string, string> = {
@@ -37,6 +39,7 @@ const ROLE_COLORS: Record<string, string> = {
   PROGRAM_MANAGER: 'bg-blue-100 text-blue-700 border-blue-200',
   CCI_MANAGER: 'bg-teal-100 text-teal-700 border-teal-200',
   CCI_STAFF: 'bg-slate-100 text-slate-700 border-slate-200',
+  VOLUNTEER: 'bg-green-100 text-green-700 border-green-200',
 };
 
 function InviteDialog({ onSuccess }: { onSuccess: () => void }) {
@@ -116,12 +119,19 @@ function InviteDialog({ onSuccess }: { onSuccess: () => void }) {
                 <SelectValue placeholder="Select role…" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
                 <SelectItem value="PROGRAM_MANAGER">Program Manager</SelectItem>
                 <SelectItem value="CCI_MANAGER">CCI Manager</SelectItem>
                 <SelectItem value="CCI_STAFF">CCI Staff</SelectItem>
-                <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
+                <SelectItem value="VOLUNTEER">Volunteer</SelectItem>
               </SelectContent>
             </Select>
+            {form.role === 'VOLUNTEER' && (
+              <p className="flex items-start gap-1.5 text-xs text-slate-500 mt-1">
+                <InfoIcon className="w-3.5 h-3.5 mt-0.5 shrink-0 text-[#3191c2]" />
+                Volunteer will be prompted to complete their profile on first login.
+              </p>
+            )}
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="password">Temporary Password</Label>
@@ -196,7 +206,7 @@ export default function UsersPage() {
             <UserCog className="w-6 h-6 text-[#3191c2]" />
             Team Members
           </h1>
-          <p className="text-slate-500 text-sm mt-1">Manage staff accounts — volunteers self-register separately.</p>
+          <p className="text-slate-500 text-sm mt-1">Manage staff and volunteer accounts.</p>
         </div>
         <InviteDialog onSuccess={load} />
       </div>
