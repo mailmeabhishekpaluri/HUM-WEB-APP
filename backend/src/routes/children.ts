@@ -94,8 +94,81 @@ router.patch('/:id', requireRole('SUPER_ADMIN', 'PROGRAM_MANAGER', 'CCI_MANAGER'
 // Attendance for a child
 router.get('/:id/attendance', async (req: AuthRequest, res, next) => {
   try {
+    if (req.user!.role === 'VOLUNTEER') return res.status(403).json({ error: 'Access denied' });
     const records = await childService.getAttendance(req.params.id, Number(req.query.months) || 3);
     res.json(records);
+  } catch (err) { next(err); }
+});
+
+// Mark single attendance record
+router.post('/:id/attendance', requireRole('SUPER_ADMIN', 'PROGRAM_MANAGER', 'CCI_MANAGER', 'CCI_STAFF'), async (req: AuthRequest, res, next) => {
+  try {
+    const record = await prisma.attendanceRecord.create({
+      data: {
+        childId: req.params.id,
+        date: new Date(req.body.date || Date.now()),
+        sessionType: req.body.sessionType,
+        status: req.body.status,
+        note: req.body.note || req.body.notes,
+        markedById: req.user!.id,
+      },
+    });
+    res.status(201).json(record);
+  } catch (err) { next(err); }
+});
+
+// Get all health records (growth + vaccinations + illnesses)
+router.get('/:id/health', async (req: AuthRequest, res, next) => {
+  try {
+    if (req.user!.role === 'VOLUNTEER') return res.status(403).json({ error: 'Access denied' });
+    const [growth, vaccinations, illnesses] = await Promise.all([
+      prisma.healthGrowth.findMany({ where: { childId: req.params.id }, orderBy: { date: 'desc' } }),
+      prisma.vaccination.findMany({ where: { childId: req.params.id }, orderBy: { recommendedDate: 'asc' } }),
+      prisma.illness.findMany({ where: { childId: req.params.id }, orderBy: { date: 'desc' } }),
+    ]);
+    res.json({ growth, vaccinations, illnesses });
+  } catch (err) { next(err); }
+});
+
+// Unified health POST — dispatch by type
+router.post('/:id/health', requireRole('SUPER_ADMIN', 'PROGRAM_MANAGER', 'CCI_MANAGER', 'CCI_STAFF'), async (req: AuthRequest, res, next) => {
+  try {
+    const { type, ...body } = req.body;
+    let record;
+    if (type === 'GROWTH') record = await childService.addGrowthRecord(req.params.id, body, (req.user as any).name || req.user!.id);
+    else if (type === 'VACCINATION') record = await childService.addVaccination(req.params.id, body);
+    else if (type === 'ILLNESS') record = await childService.addIllness(req.params.id, body);
+    else return res.status(400).json({ error: 'Invalid health record type' });
+    res.status(201).json(record);
+  } catch (err) { next(err); }
+});
+
+// Get progress notes
+router.get('/:id/progress', async (req: AuthRequest, res, next) => {
+  try {
+    if (req.user!.role === 'VOLUNTEER') return res.status(403).json({ error: 'Access denied' });
+    const notes = await prisma.progressNote.findMany({
+      where: { childId: req.params.id },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json(notes);
+  } catch (err) { next(err); }
+});
+
+// Get case events
+router.get('/:id/cases', async (req: AuthRequest, res, next) => {
+  try {
+    if (req.user!.role === 'VOLUNTEER') return res.status(403).json({ error: 'Access denied' });
+    const events = await prisma.caseEvent.findMany({
+      where: { childId: req.params.id },
+      orderBy: { date: 'desc' },
+      include: { amendments: true },
+    });
+    const role = req.user!.role;
+    const sanitized = (role !== 'SUPER_ADMIN' && role !== 'PROGRAM_MANAGER')
+      ? events.map(e => e.isSensitive ? { ...e, description: '[Sensitive — access restricted]', amendments: [] } : e)
+      : events;
+    res.json(sanitized);
   } catch (err) { next(err); }
 });
 

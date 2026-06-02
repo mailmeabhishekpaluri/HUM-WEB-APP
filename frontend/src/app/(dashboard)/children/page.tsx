@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,15 +17,31 @@ interface Child {
   cci: { id: string; name: string; };
 }
 
+interface CCI {
+  id: string; name: string;
+}
+
 export default function ChildrenPage() {
   const { user } = useAuth();
+  const router = useRouter();
   const [children, setChildren] = useState<Child[]>([]);
+  const [ccis, setCcis] = useState<CCI[]>([]);
   const [search, setSearch] = useState('');
   const [filterGender, setFilterGender] = useState('');
+  const [filterCci, setFilterCci] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get('/children').then(r => setChildren(r.data)).finally(() => setLoading(false));
+    if (user && !['SUPER_ADMIN', 'PROGRAM_MANAGER', 'CCI_MANAGER', 'CCI_STAFF'].includes(user.role ?? '')) {
+      router.push('/dashboard');
+    }
+  }, [user, router]);
+
+  useEffect(() => {
+    Promise.all([api.get('/children'), api.get('/ccis')]).then(([cr, ccir]) => {
+      setChildren(Array.isArray(cr.data) ? cr.data : cr.data?.data || []);
+      setCcis(Array.isArray(ccir.data) ? ccir.data : ccir.data?.data || []);
+    }).finally(() => setLoading(false));
   }, []);
 
   const canCreate = ['SUPER_ADMIN', 'PROGRAM_MANAGER', 'CCI_MANAGER', 'CCI_STAFF'].includes(user?.role || '');
@@ -38,7 +55,8 @@ export default function ChildrenPage() {
     const name = `${c.firstName} ${c.lastName || ''}`.toLowerCase();
     const matchSearch = !search || name.includes(search.toLowerCase()) || c.childId.includes(search);
     const matchGender = !filterGender || c.gender === filterGender;
-    return matchSearch && matchGender;
+    const matchCci = !filterCci || c.cci?.id === filterCci;
+    return matchSearch && matchGender && matchCci;
   });
 
   return (
@@ -66,10 +84,17 @@ export default function ChildrenPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <Input className="pl-9" placeholder="Search by name or ID…" value={search} onChange={e => setSearch(e.target.value)} />
         </div>
-        <Select onValueChange={setFilterGender}>
+        <Select onValueChange={v => setFilterCci((v as string) === '__all__' ? '' : v as string)}>
+          <SelectTrigger className="w-44"><SelectValue placeholder="All CCIs" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">All CCIs</SelectItem>
+            {ccis.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select onValueChange={v => setFilterGender((v as string) === '__all__' ? '' : v as string)}>
           <SelectTrigger className="w-36"><SelectValue placeholder="All genders" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All</SelectItem>
+            <SelectItem value="__all__">All genders</SelectItem>
             <SelectItem value="MALE">Male</SelectItem>
             <SelectItem value="FEMALE">Female</SelectItem>
             <SelectItem value="OTHER">Other</SelectItem>
@@ -98,10 +123,15 @@ export default function ChildrenPage() {
                     </div>
                     <div>
                       <p className="font-medium text-sm">{c.firstName} {c.lastName}</p>
-                      <p className="text-xs text-slate-400">{c.childId} · {getAge(c.dateOfBirth)} yrs · {c.cci.name}</p>
+                      <p className="text-xs text-slate-400">{c.childId} · {getAge(c.dateOfBirth)} yrs · {c.cci?.name}</p>
                     </div>
                   </div>
-                  <Badge variant="outline" className="text-xs">{c.gender}</Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-xs">{c.gender}</Badge>
+                    <Badge className={`text-xs ${c.isActive ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
+                      {c.isActive ? 'Active' : 'Inactive'}
+                    </Badge>
+                  </div>
                 </CardContent>
               </Card>
             </Link>

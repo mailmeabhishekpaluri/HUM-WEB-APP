@@ -12,27 +12,23 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login, user } = useAuth();
+  const { login } = useAuth();
   const router = useRouter();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     try {
-      await login(email, password);
+      const userData = await login(email, password);
+      if (userData.accountStatus === 'PENDING') {
+        router.push('/setup');
+      } else {
+        router.push('/dashboard');
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Invalid credentials';
       toast.error('Login failed', { description: msg });
       setLoading(false);
-    }
-  }
-
-  // Redirect after user state is set by login()
-  if (user) {
-    if (user.accountStatus === 'PENDING') {
-      router.push('/setup');
-    } else {
-      router.push('/dashboard');
     }
   }
 

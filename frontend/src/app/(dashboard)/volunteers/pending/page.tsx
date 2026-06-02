@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
@@ -51,6 +52,7 @@ function VolunteerSkeleton() {
 
 export default function PendingApprovalsPage() {
   const { user } = useAuth();
+  const router = useRouter();
   const { toast } = useToast();
   const [volunteers, setVolunteers] = useState<PendingVolunteer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,6 +60,12 @@ export default function PendingApprovalsPage() {
   const [rejectReason, setRejectReason] = useState('');
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [leaving, setLeaving] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (user && !['SUPER_ADMIN', 'PROGRAM_MANAGER'].includes(user.role ?? '')) {
+      router.push('/dashboard');
+    }
+  }, [user, router]);
 
   async function load() {
     setLoading(true);

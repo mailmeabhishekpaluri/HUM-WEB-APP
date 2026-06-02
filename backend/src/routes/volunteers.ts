@@ -136,6 +136,28 @@ router.patch('/:userId/reject', requireRole('SUPER_ADMIN', 'PROGRAM_MANAGER'), a
   } catch (err) { next(err); }
 });
 
+// Get volunteer attendance/event history (admin view) — before /:userId
+router.get('/:userId/attendance', requireRole('SUPER_ADMIN', 'PROGRAM_MANAGER', 'CCI_MANAGER'), async (req: AuthRequest, res, next) => {
+  try {
+    const profile = await prisma.volunteerProfile.findUnique({ where: { userId: req.params.userId } });
+    if (!profile) return res.json([]);
+    const regs = await prisma.eventRegistration.findMany({
+      where: { volunteerId: profile.id },
+      include: { opportunity: { select: { title: true, dateTime: true, programmeArea: true } } },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json(regs.map(r => ({
+      id: r.id,
+      title: r.opportunity.title,
+      date: r.opportunity.dateTime,
+      programmeArea: r.opportunity.programmeArea,
+      attended: r.attended,
+      status: r.status,
+      hoursLogged: r.hoursLogged,
+    })));
+  } catch (err) { next(err); }
+});
+
 // Get volunteer profile (admin view)
 router.get('/:userId', requireRole('SUPER_ADMIN', 'PROGRAM_MANAGER', 'CCI_MANAGER'), async (req: AuthRequest, res, next) => {
   try {

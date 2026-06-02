@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   Building2, Users, Heart, BarChart3,
-  LogOut, Menu, Home, UserCog, UserCheck
+  LogOut, Menu, Home, UserCog, UserCheck, Trophy
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { NotificationBell } from '@/components/shared/NotificationBell';
@@ -22,6 +22,7 @@ const navItems = [
   { href: '/reports', label: 'Reports', icon: BarChart3, roles: ['SUPER_ADMIN', 'PROGRAM_MANAGER', 'CCI_MANAGER'] },
   { href: '/volunteers/pending', label: 'Approvals', icon: UserCheck, roles: ['SUPER_ADMIN', 'PROGRAM_MANAGER'] },
   { href: '/users', label: 'Team', icon: UserCog, roles: ['SUPER_ADMIN'] },
+  { href: '/leaderboard', label: 'Leaderboard', icon: Trophy, roles: ['SUPER_ADMIN', 'PROGRAM_MANAGER', 'CCI_MANAGER', 'VOLUNTEER'] },
 ];
 
 interface SidebarProps {
@@ -84,6 +85,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     );
   }
   if (!user) return null;
+  // Block render entirely for accounts that haven't completed first-login setup
+  if (user.accountStatus === 'PENDING') return null;
 
   return (
     <div className="flex h-screen">

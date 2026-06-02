@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
@@ -159,10 +160,17 @@ function InviteDialog({ onSuccess }: { onSuccess: () => void }) {
 
 export default function UsersPage() {
   const { user: me } = useAuth();
+  const router = useRouter();
   const { toast } = useToast();
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(false);
+
+  useEffect(() => {
+    if (me && me.role !== 'SUPER_ADMIN') {
+      router.push('/dashboard');
+    }
+  }, [me, router]);
 
   async function load() {
     setLoading(true);

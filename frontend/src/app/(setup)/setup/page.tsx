@@ -335,7 +335,7 @@ function VolunteerProfileStep({ onDone }: { onDone: () => void }) {
 }
 
 export default function SetupPage() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const router = useRouter();
   const [step, setStep] = useState(1);
   const isVolunteer = user?.role === 'VOLUNTEER';
@@ -347,6 +347,7 @@ export default function SetupPage() {
     } else {
       try {
         await api.post('/auth/complete-setup');
+        await refreshUser();
         toast.success('Setup complete. Welcome!');
         router.push('/dashboard');
       } catch {
@@ -355,7 +356,8 @@ export default function SetupPage() {
     }
   }
 
-  function handleProfileDone() {
+  async function handleProfileDone() {
+    await refreshUser();
     router.push('/dashboard');
   }
 

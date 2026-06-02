@@ -33,7 +33,7 @@ export async function login(email: string, password: string) {
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     },
   });
-  return { accessToken, refreshToken, user: { id: user.id, name: user.name, email: user.email, role: user.role } };
+  return { accessToken, refreshToken, user: { id: user.id, name: user.name, email: user.email, role: user.role, accountStatus: user.accountStatus } };
 }
 
 export async function createUser(data: {
@@ -42,10 +42,15 @@ export async function createUser(data: {
   const existing = await prisma.user.findUnique({ where: { email: data.email } });
   if (existing) throw new Error('Email already registered');
   const passwordHash = await bcrypt.hash(data.password, 10);
-  return prisma.user.create({
+  const user = await prisma.user.create({
     data: { email: data.email, name: data.name, role: data.role, mobile: data.mobile, passwordHash, accountStatus: 'PENDING' },
     select: { id: true, email: true, name: true, role: true },
   });
+  // Volunteers need a profile so they can complete it on first login
+  if (data.role === 'VOLUNTEER') {
+    await prisma.volunteerProfile.create({ data: { userId: user.id } });
+  }
+  return user;
 }
 
 export async function refreshAccessToken(token: string) {

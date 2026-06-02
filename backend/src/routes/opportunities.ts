@@ -48,6 +48,22 @@ router.get('/:id', async (req: AuthRequest, res, next) => {
   } catch (err) { next(err); }
 });
 
+// List registrations for an opportunity (for attendance marking)
+router.get('/:id/registrations', requireRole('SUPER_ADMIN', 'PROGRAM_MANAGER', 'CCI_MANAGER'), async (req: AuthRequest, res, next) => {
+  try {
+    const regs = await prisma.eventRegistration.findMany({
+      where: { opportunityId: req.params.id },
+      include: { volunteer: { include: { user: { select: { id: true, name: true, email: true } } } } },
+    });
+    res.json(regs.map(r => ({
+      id: r.id,
+      userId: r.volunteer.user.id,
+      attended: r.attended,
+      volunteer: { user: { name: r.volunteer.user.name, email: r.volunteer.user.email } },
+    })));
+  } catch (err) { next(err); }
+});
+
 // Register for opportunity
 router.post('/:id/register', async (req: AuthRequest, res, next) => {
   try {
@@ -56,10 +72,21 @@ router.post('/:id/register', async (req: AuthRequest, res, next) => {
   } catch (err) { next(err); }
 });
 
-// Mark attendance for an event
+// Mark attendance for an event — supports batch (attendedVolunteerIds) or single (volunteerUserId, attended)
 router.post('/:id/attendance', requireRole('SUPER_ADMIN', 'PROGRAM_MANAGER', 'CCI_MANAGER'), async (req: AuthRequest, res, next) => {
   try {
-    const { volunteerUserId, attended } = req.body;
+    const { attendedVolunteerIds, volunteerUserId, attended } = req.body;
+    if (Array.isArray(attendedVolunteerIds)) {
+      const regs = await prisma.eventRegistration.findMany({
+        where: { opportunityId: req.params.id },
+        include: { volunteer: { select: { userId: true } } },
+      });
+      const attendedSet = new Set(attendedVolunteerIds);
+      for (const r of regs) {
+        await volunteerService.markAttendance(req.params.id, r.volunteer.userId, attendedSet.has(r.volunteer.userId), req.user!.id);
+      }
+      return res.json({ marked: regs.length });
+    }
     const result = await volunteerService.markAttendance(req.params.id, volunteerUserId, attended, req.user!.id);
     res.json(result);
   } catch (err) { next(err); }

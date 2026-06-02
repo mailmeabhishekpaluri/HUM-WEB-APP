@@ -27,14 +27,19 @@ export async function registerVolunteer(data: {
 }
 
 export async function updateVolunteerProfile(userId: string, data: {
+  city?: string; skills?: string[];
   organisation?: string; professionalDomain?: string; languages?: string[];
   availabilityDays?: number[]; hoursPerWeek?: number; preferredProgrammes?: string[];
   preferredCCIId?: string; motivationStatement?: string; emergencyContact?: string;
   corporatePartner?: string;
 }) {
+  if (data.skills && data.skills.length) {
+    await updateSkills(userId, data.skills);
+  }
   return prisma.volunteerProfile.update({
     where: { userId },
     data: {
+      city: data.city,
       organisation: data.organisation,
       professionalDomain: data.professionalDomain as any,
       languages: data.languages,
