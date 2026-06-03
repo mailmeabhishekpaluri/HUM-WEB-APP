@@ -4,14 +4,25 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
-  Building2, Heart, Users, BarChart3, Clock, Award, CalendarCheck, Bell, AlertCircle, Trophy, ArrowRight
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from '@/components/ui/dialog';
+import {
+  Building2, Heart, Users, BarChart3, Clock, Award, CalendarCheck, Bell, AlertCircle, Trophy, ArrowRight, UserCheck, CheckCircle2
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { toast } from 'sonner';
 import Link from 'next/link';
-import { PROGRAMME_LABELS, humanize, formatDate } from '@/lib/labels';
+import { PROGRAMME_LABELS, PROGRAMME_OPTIONS, humanize, formatDate } from '@/lib/labels';
 
 interface Summary {
   cciCount: number;
@@ -29,7 +40,26 @@ interface VolunteerProfile {
   sessionsAttended?: number;
   badges: { id: string; name: string; iconUrl?: string; awardedAt: string }[];
   user: { name: string; email: string };
+  city?: string | null;
+  professionalDomain?: string | null;
+  organisation?: string | null;
+  languages?: string[] | null;
+  availabilityDays?: number[] | null;
+  hoursPerWeek?: number | null;
+  preferredProgrammes?: string[] | null;
+  motivationStatement?: string | null;
+  emergencyContact?: string | null;
+  skills?: { id?: string; name: string }[] | null;
 }
+
+const DOMAINS = ['Education', 'Healthcare', 'Technology', 'Finance', 'Arts', 'Other'];
+
+const SKILL_OPTIONS = [
+  'Teaching', 'Mentoring', 'Medical', 'Photography', 'Event Management',
+  'Fundraising', 'Counselling', 'Social Work', 'IT/Technology', 'Arts & Crafts',
+];
+
+const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 interface Opportunity {
   id: string;
@@ -221,10 +251,334 @@ function AdminDashboard({ summary, loading }: { summary: Summary | null; loading
   );
 }
 
+const PROFILE_CHECKS: { key: string; filled: (p: VolunteerProfile) => boolean }[] = [
+  { key: 'city', filled: p => !!p.city?.trim() },
+  { key: 'professionalDomain', filled: p => !!p.professionalDomain?.trim() },
+  { key: 'organisation', filled: p => !!p.organisation?.trim() },
+  { key: 'languages', filled: p => !!p.languages?.length },
+  { key: 'availabilityDays', filled: p => !!p.availabilityDays?.length },
+  { key: 'hoursPerWeek', filled: p => p.hoursPerWeek != null && p.hoursPerWeek > 0 },
+  { key: 'preferredProgrammes', filled: p => !!p.preferredProgrammes?.length },
+  { key: 'motivationStatement', filled: p => !!p.motivationStatement?.trim() },
+  { key: 'emergencyContact', filled: p => !!p.emergencyContact?.trim() },
+  { key: 'skills', filled: p => !!p.skills?.length },
+];
+
+function computeCompletion(p: VolunteerProfile | null): number {
+  if (!p) return 0;
+  const done = PROFILE_CHECKS.filter(c => c.filled(p)).length;
+  return Math.round((done / PROFILE_CHECKS.length) * 100);
+}
+
+function ProfileEditorDialog({
+  open, onOpenChange, profile, onSaved,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  profile: VolunteerProfile | null;
+  onSaved: () => void;
+}) {
+  const [form, setForm] = useState({
+    city: '',
+    organisation: '',
+    professionalDomain: '',
+    skills: [] as string[],
+    languages: '',
+    availabilityDays: [] as number[],
+    hoursPerWeek: '',
+    preferredProgrammes: [] as string[],
+    motivationStatement: '',
+    emergencyContact: '',
+  });
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (open && profile) {
+      setForm({
+        city: profile.city ?? '',
+        organisation: profile.organisation ?? '',
+        professionalDomain: profile.professionalDomain ?? '',
+        skills: profile.skills?.map(s => s.name) ?? [],
+        languages: profile.languages?.join(', ') ?? '',
+        availabilityDays: profile.availabilityDays ?? [],
+        hoursPerWeek: profile.hoursPerWeek != null ? String(profile.hoursPerWeek) : '',
+        preferredProgrammes: profile.preferredProgrammes ?? [],
+        motivationStatement: profile.motivationStatement ?? '',
+        emergencyContact: profile.emergencyContact ?? '',
+      });
+    }
+  }, [open, profile]);
+
+  function set(field: string, value: string) {
+    setForm(prev => ({ ...prev, [field]: value }));
+  }
+
+  function toggleSkill(skill: string) {
+    setForm(prev => ({
+      ...prev,
+      skills: prev.skills.includes(skill)
+        ? prev.skills.filter(s => s !== skill)
+        : [...prev.skills, skill],
+    }));
+  }
+
+  function toggleDay(day: number) {
+    setForm(prev => ({
+      ...prev,
+      availabilityDays: prev.availabilityDays.includes(day)
+        ? prev.availabilityDays.filter(d => d !== day)
+        : [...prev.availabilityDays, day],
+    }));
+  }
+
+  function toggleProgramme(value: string) {
+    setForm(prev => ({
+      ...prev,
+      preferredProgrammes: prev.preferredProgrammes.includes(value)
+        ? prev.preferredProgrammes.filter(p => p !== value)
+        : [...prev.preferredProgrammes, value],
+    }));
+  }
+
+  const wordCount = form.motivationStatement.trim().split(/\s+/).filter(Boolean).length;
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (wordCount > 200) {
+      toast.error('Motivation statement must be 200 words or fewer.');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await api.patch('/volunteers/me/profile', {
+        city: form.city,
+        organisation: form.organisation,
+        professionalDomain: form.professionalDomain,
+        skills: form.skills,
+        languages: form.languages.split(',').map(l => l.trim()).filter(Boolean),
+        availabilityDays: form.availabilityDays,
+        hoursPerWeek: form.hoursPerWeek ? Number(form.hoursPerWeek) : undefined,
+        preferredProgrammes: form.preferredProgrammes,
+        motivationStatement: form.motivationStatement,
+        emergencyContact: form.emergencyContact,
+      });
+      toast.success('Profile saved');
+      onOpenChange(false);
+      onSaved();
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(msg || 'Failed to save profile.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Complete Your Profile</DialogTitle>
+          <DialogDescription>
+            Tell us about yourself so we can match you with the right opportunities.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="city">City</Label>
+              <Input id="city" value={form.city} onChange={e => set('city', e.target.value)} placeholder="Mumbai" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="organisation">Organisation / College</Label>
+              <Input id="organisation" value={form.organisation} onChange={e => set('organisation', e.target.value)} placeholder="Optional" />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="domain">Professional Domain</Label>
+            <Select value={form.professionalDomain} onValueChange={v => set('professionalDomain', v)}>
+              <SelectTrigger id="domain">
+                <SelectValue placeholder="Select domain…" />
+              </SelectTrigger>
+              <SelectContent>
+                {DOMAINS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Skills</Label>
+            <div className="grid grid-cols-2 gap-2">
+              {SKILL_OPTIONS.map(skill => (
+                <label key={skill} className="flex items-center gap-2 text-sm cursor-pointer">
+                  <Checkbox
+                    checked={form.skills.includes(skill)}
+                    onCheckedChange={() => toggleSkill(skill)}
+                  />
+                  {skill}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="languages">Languages Spoken</Label>
+            <Input
+              id="languages"
+              value={form.languages}
+              onChange={e => set('languages', e.target.value)}
+              placeholder="English, Hindi, Marathi"
+            />
+            <p className="text-xs text-slate-400">Comma-separated</p>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Availability Days</Label>
+            <div className="flex flex-wrap gap-2">
+              {DAY_LABELS.map((day, i) => (
+                <label key={day} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                  <Checkbox
+                    checked={form.availabilityDays.includes(i)}
+                    onCheckedChange={() => toggleDay(i)}
+                  />
+                  {day}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="hours">Hours per Week</Label>
+            <Input
+              id="hours"
+              type="number"
+              min={1}
+              max={168}
+              value={form.hoursPerWeek}
+              onChange={e => set('hoursPerWeek', e.target.value)}
+              placeholder="e.g. 5"
+              className="max-w-[120px]"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Preferred Programmes</Label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {PROGRAMME_OPTIONS.map(p => (
+                <label key={p.value} className="flex items-center gap-2 text-sm cursor-pointer">
+                  <Checkbox
+                    checked={form.preferredProgrammes.includes(p.value)}
+                    onCheckedChange={() => toggleProgramme(p.value)}
+                  />
+                  {p.label}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="motivation">
+              Motivation Statement
+              <span className={`ml-2 text-xs font-normal ${wordCount > 200 ? 'text-rose-500' : 'text-slate-400'}`}>
+                {wordCount}/200 words
+              </span>
+            </Label>
+            <Textarea
+              id="motivation"
+              value={form.motivationStatement}
+              onChange={e => set('motivationStatement', e.target.value)}
+              placeholder="What motivates you to volunteer with HUManity?"
+              rows={4}
+              className="resize-none"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="emergency">Emergency Contact</Label>
+            <Input
+              id="emergency"
+              value={form.emergencyContact}
+              onChange={e => set('emergencyContact', e.target.value)}
+              placeholder="Name & phone number"
+            />
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="submit"
+              disabled={submitting}
+              className="bg-[#3191c2] hover:bg-[#2a7fa8] text-white"
+            >
+              {submitting ? 'Saving…' : 'Save Profile'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ProfileCompletionTile({ profile, loading, onComplete }: {
+  profile: VolunteerProfile | null;
+  loading: boolean;
+  onComplete: () => void;
+}) {
+  const pct = computeCompletion(profile);
+  const complete = pct >= 100;
+
+  return (
+    <Card className={complete ? 'border-green-200 bg-green-50/40' : 'border-[#3191c2]/30'}>
+      <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <CardTitle className="text-base flex items-center gap-2">
+          <UserCheck className="w-4 h-4 text-[#3191c2]" />
+          Profile Completion
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {loading ? (
+          <Skeleton className="h-10 w-full" />
+        ) : complete ? (
+          <div className="flex items-center gap-2 text-green-700">
+            <CheckCircle2 className="w-5 h-5" />
+            <span className="text-sm font-semibold">Profile complete ✓</span>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-slate-700">Profile {pct}% complete</span>
+            </div>
+            <Progress value={pct} className="[&_[data-slot=progress-indicator]]:bg-[#3191c2]" />
+            <p className="text-xs text-slate-500">
+              Recommended: complete your profile within the first 3 days
+            </p>
+            <Button
+              size="sm"
+              onClick={onComplete}
+              className="bg-[#3191c2] hover:bg-[#2a7fa8] text-white"
+            >
+              Complete Profile
+            </Button>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function VolunteerDashboard() {
   const [profile, setProfile] = useState<VolunteerProfile | null>(null);
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editorOpen, setEditorOpen] = useState(false);
+
+  async function fetchProfile() {
+    try {
+      const res = await api.get('/volunteers/me');
+      setProfile(res.data);
+    } catch {
+      toast.error('Failed to load your profile');
+    }
+  }
 
   useEffect(() => {
     Promise.all([
@@ -241,6 +595,18 @@ function VolunteerDashboard() {
 
   return (
     <>
+      <ProfileCompletionTile
+        profile={profile}
+        loading={loading}
+        onComplete={() => setEditorOpen(true)}
+      />
+      <ProfileEditorDialog
+        open={editorOpen}
+        onOpenChange={setEditorOpen}
+        profile={profile}
+        onSaved={fetchProfile}
+      />
+
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {loading ? (
           Array.from({ length: 3 }).map((_, i) => <StatSkeleton key={i} />)

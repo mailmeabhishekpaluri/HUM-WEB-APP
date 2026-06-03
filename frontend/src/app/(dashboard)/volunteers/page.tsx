@@ -3,17 +3,22 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
+} from '@/components/ui/dialog';
+import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import {
-  Users, Search, CheckCircle, Clock, PauseCircle, ArrowRight, ExternalLink,
+  Users, Search, CheckCircle, Clock, PauseCircle, ArrowRight, ExternalLink, UserPlus, Copy,
 } from 'lucide-react';
 import {
   POLICE_STATUS_LABELS, SAFEGUARDING_STATUS_LABELS, humanize,
@@ -48,6 +53,182 @@ function PoliceBadge({ status }: { status: string }) {
     <Badge variant="outline" className={verified ? 'bg-green-50 text-green-700 border-green-200 text-xs' : 'bg-amber-50 text-amber-700 border-amber-200 text-xs'}>
       {POLICE_STATUS_LABELS[status] ?? humanize(status)}
     </Badge>
+  );
+}
+
+interface CreatedVolunteer {
+  name: string;
+  mobile: string;
+  tempPassword: string;
+}
+
+function AddVolunteerDialog({ onCreated }: { onCreated: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState('');
+  const [mobile, setMobile] = useState('');
+  const [email, setEmail] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [created, setCreated] = useState<CreatedVolunteer | null>(null);
+
+  function reset() {
+    setName('');
+    setMobile('');
+    setEmail('');
+    setCreated(null);
+    setSubmitting(false);
+  }
+
+  function handleOpenChange(next: boolean) {
+    setOpen(next);
+    if (!next) {
+      const wasCreated = created !== null;
+      reset();
+      if (wasCreated) onCreated();
+    }
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      const payload: { name: string; mobile: string; email?: string } = {
+        name: name.trim(),
+        mobile: mobile.trim(),
+      };
+      if (email.trim()) payload.email = email.trim();
+      const { data } = await api.post('/auth/volunteers', payload);
+      setCreated({
+        name: data.user?.name ?? payload.name,
+        mobile: data.user?.mobile ?? payload.mobile,
+        tempPassword: data.tempPassword,
+      });
+    } catch (err: unknown) {
+      const e2 = err as { response?: { data?: { message?: string } } };
+      const msg = e2.response?.data?.message ?? (err instanceof Error ? err.message : 'Failed to create volunteer');
+      toast.error('Could not create volunteer', { description: Array.isArray(msg) ? msg.join(', ') : msg });
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleCopy() {
+    if (!created) return;
+    await navigator.clipboard.writeText(`Phone: ${created.mobile} / Password: ${created.tempPassword}`);
+    toast.success('Copied');
+  }
+
+  function handleDone() {
+    setOpen(false);
+    const wasCreated = created !== null;
+    reset();
+    if (wasCreated) onCreated();
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogTrigger asChild>
+        <Button className="gap-2 bg-[#3191c2] hover:bg-[#2a7fa8] text-white">
+          <UserPlus className="w-4 h-4" />
+          Add Volunteer
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        {created ? (
+          <>
+            <DialogHeader>
+              <DialogTitle>Volunteer created</DialogTitle>
+              <DialogDescription>
+                Share these credentials with the volunteer. They&apos;ll log in with their phone number
+                and this password, then set their own password.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <div className="text-sm">
+                <span className="text-slate-500">Name</span>
+                <p className="font-medium text-slate-900">{created.name}</p>
+              </div>
+              <div className="rounded-lg border border-[#3191c2]/30 bg-[#e8f4f9] p-4 space-y-3">
+                <div className="space-y-2">
+                  <div className="flex justify-between gap-4 text-sm">
+                    <span className="text-slate-500">Phone</span>
+                    <span className="font-mono font-medium text-slate-900">{created.mobile}</span>
+                  </div>
+                  <div className="flex justify-between gap-4 text-sm">
+                    <span className="text-slate-500">Temporary password</span>
+                    <span className="font-mono font-semibold text-[#3191c2] break-all">{created.tempPassword}</span>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCopy}
+                  className="w-full gap-2 border-[#3191c2] text-[#3191c2] hover:bg-[#3191c2] hover:text-white"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  Copy
+                </Button>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button onClick={handleDone} className="bg-[#3191c2] hover:bg-[#2a7fa8] text-white">
+                Done
+              </Button>
+            </DialogFooter>
+          </>
+        ) : (
+          <form onSubmit={handleSubmit}>
+            <DialogHeader>
+              <DialogTitle>Add Volunteer</DialogTitle>
+              <DialogDescription>
+                Create a volunteer with their name and phone number. A temporary password will be generated.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="vol-name">Full Name</Label>
+                <Input
+                  id="vol-name"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  placeholder="Priya Sharma"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="vol-mobile">Phone Number</Label>
+                <Input
+                  id="vol-mobile"
+                  value={mobile}
+                  onChange={e => setMobile(e.target.value)}
+                  placeholder="9876543210"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="vol-email">Email (optional)</Label>
+                <Input
+                  id="vol-email"
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  placeholder="priya@example.com"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                type="submit"
+                disabled={submitting}
+                className="bg-[#3191c2] hover:bg-[#2a7fa8] text-white"
+              >
+                {submitting ? 'Creating…' : 'Create Volunteer'}
+              </Button>
+            </DialogFooter>
+          </form>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -103,6 +284,7 @@ export default function VolunteersPage() {
           <h1 className="text-2xl font-bold text-slate-900">Volunteers</h1>
           <p className="text-slate-500 text-sm mt-1">{volunteers.length} active · {pendingCount} pending</p>
         </div>
+        <AddVolunteerDialog onCreated={load} />
       </div>
 
       <Tabs defaultValue="active">

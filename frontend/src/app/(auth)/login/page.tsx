@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { HUManityLogo } from '@/components/shared/HUManityLogo';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
@@ -19,7 +19,7 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      const userData = await login(email, password);
+      const userData = await login(identifier, password);
       if (userData.accountStatus === 'PENDING') {
         router.push('/setup');
       } else {
@@ -68,13 +68,13 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="identifier">Phone number or email</Label>
               <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                placeholder="you@humanityorg.foundation"
+                id="identifier"
+                type="text"
+                value={identifier}
+                onChange={e => setIdentifier(e.target.value)}
+                placeholder="9876543210 or you@humanityorg.foundation"
                 required
               />
             </div>
@@ -99,7 +99,7 @@ export default function LoginPage() {
 
           <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 text-xs text-slate-500 space-y-1">
             <p className="font-medium text-slate-700">Demo credentials</p>
-            <p>admin@humanityorg.foundation / Admin@123</p>
+            <p>Admin: admin@humanityorg.foundation / Admin@123</p>
           </div>
         </div>
       </div>
