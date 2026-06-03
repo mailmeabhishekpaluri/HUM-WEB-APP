@@ -5,12 +5,13 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import {
-  Building2, Heart, Users, BarChart3, Clock, Award, CalendarCheck, Bell, AlertCircle
+  Building2, Heart, Users, BarChart3, Clock, Award, CalendarCheck, Bell, AlertCircle, Trophy, ArrowRight
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { toast } from 'sonner';
 import Link from 'next/link';
+import { PROGRAMME_LABELS, humanize, formatDate } from '@/lib/labels';
 
 interface Summary {
   cciCount: number;
@@ -25,7 +26,8 @@ interface Summary {
 interface VolunteerProfile {
   id: string;
   totalHours: number;
-  badges: { id: string; name: string; awardedAt: string }[];
+  sessionsAttended?: number;
+  badges: { id: string; name: string; iconUrl?: string; awardedAt: string }[];
   user: { name: string; email: string };
 }
 
@@ -33,6 +35,7 @@ interface Opportunity {
   id: string;
   title: string;
   date: string;
+  programme?: string;
   cci: { name: string };
   spotsLeft: number;
 }
@@ -257,94 +260,137 @@ function VolunteerDashboard() {
             </Card>
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-slate-600">Badges Earned</CardTitle>
-                <Award className="w-4 h-4 text-amber-500" />
+                <CardTitle className="text-sm font-medium text-slate-600">Sessions Attended</CardTitle>
+                <CalendarCheck className="w-4 h-4 text-green-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{profile?.badges?.length ?? '—'}</div>
-                <p className="text-xs text-slate-500 mt-1">Recognition badges</p>
+                <div className="text-2xl font-bold">{profile?.sessionsAttended ?? 0}</div>
+                <p className="text-xs text-slate-500 mt-1">Completed sessions</p>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-slate-600">Open Opportunities</CardTitle>
-                <CalendarCheck className="w-4 h-4 text-green-500" />
+                <CardTitle className="text-sm font-medium text-slate-600">Badges Earned</CardTitle>
+                <Award className="w-4 h-4 text-amber-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{opportunities.length}</div>
-                <p className="text-xs text-slate-500 mt-1">Available to join</p>
+                <div className="text-2xl font-bold">{profile?.badges?.length ?? 0}</div>
+                <p className="text-xs text-slate-500 mt-1">Recognition badges</p>
               </CardContent>
             </Card>
           </>
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <CalendarCheck className="w-4 h-4 text-[#3191c2]" />
-              Upcoming Opportunities
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="space-y-2">
-                {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
-              </div>
-            ) : !opportunities.length ? (
-              <p className="text-sm text-slate-400 italic">No open opportunities right now</p>
-            ) : (
-              <div className="space-y-2">
-                {opportunities.slice(0, 5).map(op => (
-                  <div key={op.id} className="flex items-start justify-between py-1.5 border-b last:border-0">
-                    <div>
-                      <p className="text-sm font-medium">{op.title}</p>
-                      <p className="text-xs text-slate-400">{op.cci?.name}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs text-slate-500">{new Date(op.date).toLocaleDateString()}</p>
-                      <Badge variant="outline" className="text-xs border-green-300 text-green-600">
-                        {op.spotsLeft} spots left
-                      </Badge>
-                    </div>
-                  </div>
-                ))}
-                <Link href="/opportunities">
-                  <Button size="sm" variant="outline" className="w-full mt-2 text-[#3191c2] border-[#3191c2]">
-                    View all opportunities
-                  </Button>
-                </Link>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Award className="w-4 h-4 text-amber-500" />
+            My Badges
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="flex gap-3 flex-wrap">
+              {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-20 w-24 rounded-xl" />)}
+            </div>
+          ) : !profile?.badges?.length ? (
+            <p className="text-sm text-slate-400 italic">No badges yet — keep volunteering!</p>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              {profile.badges.map(b => (
+                <div
+                  key={b.id}
+                  className="flex flex-col items-center justify-center gap-2 p-3 rounded-xl border border-amber-200 bg-amber-50 text-center"
+                >
+                  {b.iconUrl ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img src={b.iconUrl} alt={b.name} className="w-8 h-8 object-contain" />
+                  ) : (
+                    <Award className="w-8 h-8 text-amber-500" />
+                  )}
+                  <span className="text-xs font-medium text-amber-800 leading-tight">{b.name}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Award className="w-4 h-4 text-amber-500" />
-              My Badges
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="flex gap-2 flex-wrap">
-                {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-8 w-20" />)}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-base flex items-center gap-2">
+            <CalendarCheck className="w-4 h-4 text-[#3191c2]" />
+            Browse Opportunities
+          </CardTitle>
+          <Link href="/opportunities">
+            <Button size="sm" variant="outline" className="text-[#3191c2] border-[#3191c2]">
+              Register <ArrowRight className="w-3.5 h-3.5 ml-1" />
+            </Button>
+          </Link>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="space-y-2">
+              {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
+            </div>
+          ) : !opportunities.length ? (
+            <p className="text-sm text-slate-400 italic">No open opportunities right now</p>
+          ) : (
+            <div className="space-y-2">
+              {opportunities.slice(0, 6).map(op => (
+                <Link
+                  key={op.id}
+                  href="/opportunities"
+                  className="flex items-start justify-between gap-3 py-2 px-2 -mx-2 rounded-lg hover:bg-slate-50 transition-colors border-b last:border-0"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-slate-900 truncate">{op.title}</p>
+                    <p className="text-xs text-slate-400 truncate">
+                      {op.cci?.name}
+                      {op.programme ? ` · ${PROGRAMME_LABELS[op.programme] ?? humanize(op.programme)}` : ''}
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-xs text-slate-500">{formatDate(op.date)}</p>
+                    <Badge variant="outline" className="text-xs border-green-300 text-green-600">
+                      {op.spotsLeft} spots left
+                    </Badge>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Link href="/opportunities">
+          <Card className="hover:shadow-sm hover:border-[#3191c2] transition-all cursor-pointer h-full">
+            <CardContent className="flex items-center gap-3 py-5">
+              <div className="w-10 h-10 rounded-full bg-[#e8f4f9] flex items-center justify-center shrink-0">
+                <CalendarCheck className="w-5 h-5 text-[#3191c2]" />
               </div>
-            ) : !profile?.badges?.length ? (
-              <p className="text-sm text-slate-400 italic">No badges yet — keep volunteering!</p>
-            ) : (
-              <div className="flex gap-2 flex-wrap">
-                {profile.badges.map(b => (
-                  <Badge key={b.id} className="bg-amber-100 text-amber-800 hover:bg-amber-100 border border-amber-300">
-                    {b.name}
-                  </Badge>
-                ))}
+              <div>
+                <p className="text-sm font-semibold text-slate-900">My Opportunities</p>
+                <p className="text-xs text-slate-500">View and manage your registrations</p>
               </div>
-            )}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/leaderboard">
+          <Card className="hover:shadow-sm hover:border-[#3191c2] transition-all cursor-pointer h-full">
+            <CardContent className="flex items-center gap-3 py-5">
+              <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
+                <Trophy className="w-5 h-5 text-amber-500" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-900">Leaderboard</p>
+                <p className="text-xs text-slate-500">See how you rank among volunteers</p>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
     </>
   );
@@ -373,7 +419,7 @@ export default function DashboardPage() {
     <div className="p-6 space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-slate-900">
-          Welcome back, {user?.name?.split(' ')[0]}
+          Welcome back, {user?.name}
         </h1>
         <p className="text-slate-500 text-sm mt-1">
           HUManity Foundation — Integrated Operations Platform

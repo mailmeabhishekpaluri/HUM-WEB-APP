@@ -9,41 +9,58 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { ArrowLeft } from 'lucide-react';
+import { PROGRAMME_OPTIONS, SAFEGUARDING_LEVEL_OPTIONS } from '@/lib/labels';
+
+interface Skill {
+  id: string;
+  name: string;
+}
 
 export default function NewOpportunityPage() {
   const router = useRouter();
-  const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [ccis, setCCIs] = useState<{ id: string; name: string }[]>([]);
+  const [skills, setSkills] = useState<Skill[]>([]);
+  const [selectedSkills, setSelectedSkills] = useState<Set<string>>(new Set());
   const [form, setForm] = useState({
     title: '', programmeArea: '', cciId: '', dateTime: '',
     durationMinutes: '60', location: '', requiredCount: '5',
-    description: '', safeguardingLevel: 'NONE_REQUIRED', requiredSkillNames: '',
+    description: '', safeguardingLevel: 'NONE_REQUIRED',
   });
 
-  useEffect(() => { api.get('/ccis').then(r => setCCIs(r.data)); }, []);
+  useEffect(() => {
+    api.get('/ccis').then(r => setCCIs(r.data)).catch(() => {});
+    api.get('/opportunities/skills/list').then(r => setSkills(r.data ?? [])).catch(() => {});
+  }, []);
 
   const setF = (k: string) => (v: string | null) => setForm(f => ({ ...f, [k]: v ?? '' }));
   const setI = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setForm(f => ({ ...f, [k]: e.target.value }));
+
+  function toggleSkill(name: string) {
+    setSelectedSkills(prev => {
+      const next = new Set(prev);
+      next.has(name) ? next.delete(name) : next.add(name);
+      return next;
+    });
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     try {
-      const requiredSkillNames = form.requiredSkillNames.split(',').map(s => s.trim()).filter(Boolean);
       await api.post('/opportunities', {
         ...form,
         durationMinutes: Number(form.durationMinutes),
         requiredCount: Number(form.requiredCount),
-        requiredSkillNames,
+        requiredSkillNames: Array.from(selectedSkills),
         cciId: form.cciId || undefined,
       });
-      toast({ title: 'Opportunity created and published!' });
+      toast.success('Opportunity created and published!');
       router.push('/opportunities');
     } catch (err: any) {
-      toast({ title: 'Error', description: err.response?.data?.error, variant: 'destructive' });
+      toast.error(err.response?.data?.error ?? 'Failed to create opportunity');
     } finally { setLoading(false); }
   }
 
@@ -60,10 +77,10 @@ export default function NewOpportunityPage() {
             <div className="md:col-span-2 space-y-2"><Label>Title *</Label><Input value={form.title} onChange={setI('title')} required /></div>
             <div className="space-y-2">
               <Label>Programme Area *</Label>
-              <Select onValueChange={setF('programmeArea')} required>
+              <Select value={form.programmeArea} onValueChange={setF('programmeArea')} required>
                 <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                 <SelectContent>
-                  {['EDUCATION','HEALTH','NUTRITION','LIFE_SKILLS','SPORTS','OTHER'].map(p => <SelectItem key={p} value={p}>{p.replace('_',' ')}</SelectItem>)}
+                  {PROGRAMME_OPTIONS.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -82,18 +99,38 @@ export default function NewOpportunityPage() {
             <div className="space-y-2"><Label>Volunteers Required</Label><Input type="number" value={form.requiredCount} onChange={setI('requiredCount')} /></div>
             <div className="space-y-2">
               <Label>Safeguarding Level</Label>
-              <Select onValueChange={setF('safeguardingLevel')} defaultValue="NONE_REQUIRED">
+              <Select value={form.safeguardingLevel} onValueChange={setF('safeguardingLevel')} defaultValue="NONE_REQUIRED">
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="NONE_REQUIRED">None required</SelectItem>
-                  <SelectItem value="SAFEGUARDING_QUIZ_ONLY">Safeguarding quiz required</SelectItem>
-                  <SelectItem value="POLICE_VERIFICATION_REQUIRED">Police verification required</SelectItem>
+                  {SAFEGUARDING_LEVEL_OPTIONS.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div className="md:col-span-2 space-y-2">
-              <Label>Required Skills (comma-separated)</Label>
-              <Input value={form.requiredSkillNames} onChange={setI('requiredSkillNames')} placeholder="Teaching, Medical, Photography" />
+              <Label>Required Skills</Label>
+              {skills.length === 0 ? (
+                <p className="text-sm text-slate-400">No skills available.</p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {skills.map(s => {
+                    const active = selectedSkills.has(s.name);
+                    return (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => toggleSkill(s.name)}
+                        className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                          active
+                            ? 'bg-[#3191c2] text-white border-[#3191c2]'
+                            : 'bg-white text-slate-600 border-slate-200 hover:border-[#3191c2] hover:text-[#3191c2]'
+                        }`}
+                      >
+                        {s.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
             <div className="md:col-span-2 space-y-2"><Label>Description</Label><Textarea value={form.description} onChange={setI('description')} rows={3} /></div>
           </CardContent>

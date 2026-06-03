@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -215,8 +215,7 @@ function VolunteerProfileStep({ onDone }: { onDone: () => void }) {
         availabilityDays: form.availabilityDays,
         hoursPerWeek: form.hoursPerWeek ? Number(form.hoursPerWeek) : undefined,
       });
-      await api.post('/auth/complete-setup');
-      toast.success('Profile saved. Welcome!');
+      toast.success('Profile saved.');
       onDone();
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
@@ -328,9 +327,162 @@ function VolunteerProfileStep({ onDone }: { onDone: () => void }) {
         disabled={submitting}
         className="w-full bg-[#3191c2] hover:bg-[#2a7fa8] text-white"
       >
-        {submitting ? 'Saving…' : 'Complete Setup'}
+        {submitting ? 'Saving…' : 'Continue'}
       </Button>
     </form>
+  );
+}
+
+interface QuizQuestion {
+  id: string;
+  question: string;
+  options: string[];
+}
+
+function SafeguardingQuizStep({ onPassed }: { onPassed: () => Promise<void> }) {
+  const [questions, setQuestions] = useState<QuizQuestion[] | null>(null);
+  const [loadError, setLoadError] = useState(false);
+  const [answers, setAnswers] = useState<Record<string, number>>({});
+  const [submitting, setSubmitting] = useState(false);
+  const [result, setResult] = useState<{ score: number; passed: boolean; total: number } | null>(null);
+
+  async function loadQuiz() {
+    setLoadError(false);
+    setQuestions(null);
+    try {
+      const res = await api.get('/volunteers/quiz');
+      setQuestions(res.data ?? []);
+    } catch {
+      setLoadError(true);
+      toast.error('Failed to load the quiz.');
+    }
+  }
+
+  useEffect(() => { loadQuiz(); }, []);
+
+  function select(questionId: string, optionIndex: number) {
+    setAnswers(prev => ({ ...prev, [questionId]: optionIndex }));
+  }
+
+  const allAnswered = !!questions && questions.length > 0 &&
+    questions.every(q => answers[q.id] !== undefined);
+
+  async function handleSubmit() {
+    if (!allAnswered) return;
+    setSubmitting(true);
+    try {
+      const res = await api.post('/volunteers/quiz/submit', { answers });
+      const data = res.data as { score: number; passed: boolean; total: number };
+      setResult(data);
+      if (data.passed) {
+        toast.success(`You passed! ${data.score}/${data.total}`);
+        await onPassed();
+      } else {
+        toast.error(`You scored ${data.score}/${data.total}.`);
+      }
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(msg || 'Failed to submit the quiz.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  function retry() {
+    setResult(null);
+    setAnswers({});
+  }
+
+  if (loadError) {
+    return (
+      <div className="space-y-4 text-center py-6">
+        <p className="text-sm text-slate-600">We couldn’t load the safeguarding quiz.</p>
+        <Button onClick={loadQuiz} className="bg-[#3191c2] hover:bg-[#2a7fa8] text-white">
+          Try Again
+        </Button>
+      </div>
+    );
+  }
+
+  if (!questions) {
+    return (
+      <div className="space-y-5">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="space-y-2">
+            <div className="h-4 w-3/4 bg-slate-200 rounded animate-pulse" />
+            <div className="h-9 w-full bg-slate-100 rounded animate-pulse" />
+            <div className="h-9 w-full bg-slate-100 rounded animate-pulse" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (result && !result.passed) {
+    return (
+      <div className="space-y-4 text-center py-6">
+        <div className="mx-auto w-12 h-12 rounded-full bg-rose-100 flex items-center justify-center">
+          <span className="text-rose-600 font-bold text-lg">{result.score}/{result.total}</span>
+        </div>
+        <p className="text-sm text-slate-600">
+          You scored {result.score}/{result.total}. You need 8 to pass. Please review and try again.
+        </p>
+        <Button onClick={retry} className="bg-[#3191c2] hover:bg-[#2a7fa8] text-white">
+          Retry Quiz
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <p className="text-xs text-slate-500">
+        Answer all questions. A score of 8 out of 10 is required to complete your setup.
+      </p>
+      {questions.map((q, qi) => (
+        <div key={q.id} className="space-y-2">
+          <p className="text-sm font-medium text-slate-800">
+            {qi + 1}. {q.question}
+          </p>
+          <div className="space-y-1.5">
+            {q.options.map((opt, oi) => {
+              const selected = answers[q.id] === oi;
+              return (
+                <button
+                  key={oi}
+                  type="button"
+                  onClick={() => select(q.id, oi)}
+                  className={`w-full text-left text-sm rounded-lg border px-3 py-2 transition-colors ${
+                    selected
+                      ? 'border-[#3191c2] bg-[#e8f4f9] text-slate-900'
+                      : 'border-slate-200 hover:border-slate-300 text-slate-700'
+                  }`}
+                >
+                  <span className="inline-flex items-center gap-2">
+                    <span
+                      className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
+                        selected ? 'border-[#3191c2]' : 'border-slate-300'
+                      }`}
+                    >
+                      {selected && <span className="w-2 h-2 rounded-full bg-[#3191c2]" />}
+                    </span>
+                    {opt}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+      <Button
+        type="button"
+        onClick={handleSubmit}
+        disabled={!allAnswered || submitting}
+        className="w-full bg-[#3191c2] hover:bg-[#2a7fa8] text-white"
+      >
+        {submitting ? 'Submitting…' : 'Submit Quiz'}
+      </Button>
+    </div>
   );
 }
 
@@ -339,7 +491,7 @@ export default function SetupPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const isVolunteer = user?.role === 'VOLUNTEER';
-  const totalSteps = isVolunteer ? 2 : 1;
+  const totalSteps = isVolunteer ? 3 : 1;
 
   async function handlePasswordDone() {
     if (isVolunteer) {
@@ -356,15 +508,26 @@ export default function SetupPage() {
     }
   }
 
-  async function handleProfileDone() {
-    await refreshUser();
-    router.push('/dashboard');
+  function handleProfileDone() {
+    setStep(3);
   }
 
-  const titles = ['Set a New Password', 'Complete Your Profile'];
+  async function handleQuizPassed() {
+    try {
+      await api.post('/auth/complete-setup');
+      await refreshUser();
+      toast.success('Setup complete. Welcome!');
+      router.push('/dashboard');
+    } catch {
+      toast.error('Failed to complete setup.');
+    }
+  }
+
+  const titles = ['Set a New Password', 'Complete Your Profile', 'Safeguarding Quiz'];
   const descriptions = [
     'For security, please change your temporary password before continuing.',
     'Tell us a bit about yourself so we can match you with the right opportunities.',
+    'Complete the safeguarding quiz to finish your setup. You need 8 out of 10 to pass.',
   ];
 
   return (
@@ -380,6 +543,7 @@ export default function SetupPage() {
       <CardContent className="px-6 pb-6 pt-4">
         {step === 1 && <ChangePasswordStep onNext={handlePasswordDone} />}
         {step === 2 && isVolunteer && <VolunteerProfileStep onDone={handleProfileDone} />}
+        {step === 3 && isVolunteer && <SafeguardingQuizStep onPassed={handleQuizPassed} />}
       </CardContent>
     </Card>
   );

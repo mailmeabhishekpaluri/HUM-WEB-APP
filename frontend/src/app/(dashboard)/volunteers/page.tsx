@@ -15,12 +15,16 @@ import {
 import {
   Users, Search, CheckCircle, Clock, PauseCircle, ArrowRight, ExternalLink,
 } from 'lucide-react';
+import {
+  POLICE_STATUS_LABELS, SAFEGUARDING_STATUS_LABELS, humanize,
+} from '@/lib/labels';
 
 interface Volunteer {
   id: string;
   userId: string;
   city: string;
   totalHours: number;
+  joinedDate: string;
   accountStatus: string;
   policeVerification: string;
   safeguardingStatus: string;
@@ -33,7 +37,7 @@ function QuizBadge({ status }: { status: string }) {
   const passed = status === 'PASS';
   return (
     <Badge variant="outline" className={passed ? 'bg-green-50 text-green-700 border-green-200 text-xs' : 'bg-slate-50 text-slate-500 border-slate-200 text-xs'}>
-      {passed ? 'Passed' : 'Pending'}
+      {SAFEGUARDING_STATUS_LABELS[status] ?? humanize(status)}
     </Badge>
   );
 }
@@ -42,7 +46,7 @@ function PoliceBadge({ status }: { status: string }) {
   const verified = status === 'VERIFIED';
   return (
     <Badge variant="outline" className={verified ? 'bg-green-50 text-green-700 border-green-200 text-xs' : 'bg-amber-50 text-amber-700 border-amber-200 text-xs'}>
-      {verified ? 'Verified' : status.replace(/_/g, ' ')}
+      {POLICE_STATUS_LABELS[status] ?? humanize(status)}
     </Badge>
   );
 }
@@ -51,9 +55,11 @@ export default function VolunteersPage() {
   const router = useRouter();
   const [volunteers, setVolunteers] = useState<Volunteer[]>([]);
   const [onHold, setOnHold] = useState<Volunteer[]>([]);
-  const [pendingCount, setPendingCount] = useState(0);
+  const [pending, setPending] = useState<Volunteer[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+
+  const pendingCount = pending.length;
 
   async function load() {
     try {
@@ -63,7 +69,7 @@ export default function VolunteersPage() {
         api.get('/volunteers?status=ON_HOLD').catch(() => ({ data: [] })),
       ]);
       setVolunteers(allRes.data);
-      setPendingCount(Array.isArray(pendingRes.data) ? pendingRes.data.length : 0);
+      setPending(Array.isArray(pendingRes.data) ? pendingRes.data : []);
       setOnHold(holdRes.data);
     } finally { setLoading(false); }
   }
@@ -202,22 +208,88 @@ export default function VolunteersPage() {
           </div>
         </TabsContent>
 
-        <TabsContent value="pending" className="mt-4">
-          <div className="rounded-lg border bg-amber-50 border-amber-200 p-5 flex items-center justify-between gap-4">
-            <div>
-              <p className="font-semibold text-amber-900">
-                {pendingCount > 0
-                  ? `${pendingCount} volunteer${pendingCount === 1 ? '' : 's'} awaiting approval`
-                  : 'No pending approvals right now'}
-              </p>
-              <p className="text-sm text-amber-700 mt-0.5">Review and approve or reject each application from the approvals queue.</p>
-            </div>
+        <TabsContent value="pending" className="mt-4 space-y-4">
+          <div className="flex items-center justify-between gap-4">
+            <p className="text-sm text-slate-500">
+              {pendingCount > 0
+                ? `${pendingCount} volunteer${pendingCount === 1 ? '' : 's'} awaiting approval`
+                : 'No pending approvals right now'}
+            </p>
             <Link href="/volunteers/pending">
-              <Button className="bg-[#3191c2] hover:bg-[#2a7fa8] text-white gap-2 shrink-0">
-                Go to Approvals
+              <Button size="sm" variant="outline" className="gap-2 shrink-0">
+                Go to Approvals queue
                 <ArrowRight className="w-4 h-4" />
               </Button>
             </Link>
+          </div>
+
+          <div className="rounded-xl border bg-white overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-slate-50">
+                  <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>City</TableHead>
+                  <TableHead>Skills</TableHead>
+                  <TableHead>Quiz</TableHead>
+                  <TableHead>Police</TableHead>
+                  <TableHead />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <SkeletonRows />
+                ) : pending.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7}>
+                      <div className="text-center py-12 text-slate-400">
+                        <Clock className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                        <p>No pending volunteers</p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  pending.map(v => (
+                    <TableRow
+                      key={v.id}
+                      className="cursor-pointer hover:bg-slate-50 transition-colors"
+                      onClick={() => router.push(`/volunteers/${v.userId}`)}
+                    >
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-full bg-[#e8f4f9] flex items-center justify-center text-[#3191c2] font-semibold text-xs shrink-0">
+                            {v.user.name[0]}
+                          </div>
+                          <span className="font-medium text-sm text-slate-900">{v.user.name}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm text-slate-500">{v.user.email}</TableCell>
+                      <TableCell className="text-sm text-slate-600">{v.city || '—'}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {v.skills.slice(0, 2).map(s => (
+                            <Badge key={s.skill.name} variant="secondary" className="text-xs">{s.skill.name}</Badge>
+                          ))}
+                          {v.skills.length > 2 && (
+                            <span className="text-xs text-slate-400">+{v.skills.length - 2}</span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell><QuizBadge status={v.safeguardingStatus} /></TableCell>
+                      <TableCell><PoliceBadge status={v.policeVerification} /></TableCell>
+                      <TableCell onClick={e => e.stopPropagation()}>
+                        <Link href={`/volunteers/${v.userId}`}>
+                          <Button size="sm" variant="ghost" className="h-7 px-2 text-[#3191c2] hover:text-[#2a7fa8] gap-1">
+                            Review
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </Button>
+                        </Link>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
           </div>
         </TabsContent>
 

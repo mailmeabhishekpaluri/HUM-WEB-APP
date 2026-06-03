@@ -6,15 +6,28 @@ import { toast } from 'sonner';
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, Calendar, MapPin, Users, ClipboardList, CheckSquare, Square } from 'lucide-react';
+import { Plus, Calendar, MapPin, Users, ClipboardList, CheckSquare, Square, UserPlus } from 'lucide-react';
+import {
+  PROGRAMME_LABELS,
+  SAFEGUARDING_LEVEL_LABELS,
+  OPPORTUNITY_STATUS_LABELS,
+  formatDateTime,
+  humanize,
+} from '@/lib/labels';
 
 interface RegisteredVolunteer {
   id: string;
   userId: string;
   volunteer: { user: { name: string; email: string } };
+}
+
+interface ActiveVolunteer {
+  userId: string;
+  user: { id: string; name: string; email: string };
 }
 
 interface Opportunity {
@@ -40,12 +53,6 @@ const statusColor: Record<string, string> = {
   CANCELLED: 'bg-red-100 text-red-700',
 };
 
-const safeguardingColor: Record<string, string> = {
-  BASIC: 'bg-blue-50 text-blue-600 border-blue-200',
-  ENHANCED: 'bg-purple-50 text-purple-600 border-purple-200',
-  NONE: 'bg-slate-50 text-slate-500 border-slate-200',
-};
-
 export default function OpportunitiesPage() {
   const { user } = useAuth();
   const [opps, setOpps] = useState<Opportunity[]>([]);
@@ -57,6 +64,10 @@ export default function OpportunitiesPage() {
   const [attendanceLoading, setAttendanceLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [registeringId, setRegisteringId] = useState<string | null>(null);
+
+  const [activeVolunteers, setActiveVolunteers] = useState<ActiveVolunteer[]>([]);
+  const [walkInSearch, setWalkInSearch] = useState('');
+  const [addingWalkIn, setAddingWalkIn] = useState<string | null>(null);
 
   const canCreate = user?.role === 'SUPER_ADMIN' || user?.role === 'PROGRAM_MANAGER';
   const canMarkAttendance = user?.role === 'SUPER_ADMIN' || user?.role === 'PROGRAM_MANAGER' || user?.role === 'CCI_MANAGER';
@@ -88,18 +99,28 @@ export default function OpportunitiesPage() {
     }
   }
 
+  async function loadRegistrations(oppId: string) {
+    const res = await api.get(`/opportunities/${oppId}/registrations`);
+    setRegistrations(res.data ?? []);
+  }
+
   async function openAttendanceDialog(opp: Opportunity) {
     setAttendanceOpp(opp);
     setAttended(new Set());
+    setWalkInSearch('');
     setAttendanceLoading(true);
     try {
-      const res = await api.get(`/opportunities/${opp.id}/registrations`);
-      setRegistrations(res.data ?? []);
+      await loadRegistrations(opp.id);
     } catch {
       toast.error('Failed to load registrations');
       setRegistrations([]);
     } finally {
       setAttendanceLoading(false);
+    }
+    if (canMarkAttendance) {
+      api.get('/volunteers?status=ACTIVE')
+        .then(r => setActiveVolunteers(r.data ?? []))
+        .catch(() => setActiveVolunteers([]));
     }
   }
 
@@ -109,6 +130,21 @@ export default function OpportunitiesPage() {
       next.has(userId) ? next.delete(userId) : next.add(userId);
       return next;
     });
+  }
+
+  async function addWalkIn(volunteerUserId: string) {
+    if (!attendanceOpp) return;
+    setAddingWalkIn(volunteerUserId);
+    try {
+      await api.post(`/opportunities/${attendanceOpp.id}/walk-in`, { volunteerUserId });
+      toast.success('Walk-in volunteer added');
+      await loadRegistrations(attendanceOpp.id);
+      setWalkInSearch('');
+    } catch (err: any) {
+      toast.error(err.response?.data?.error ?? 'Failed to add walk-in');
+    } finally {
+      setAddingWalkIn(null);
+    }
   }
 
   async function submitAttendance() {
@@ -126,6 +162,17 @@ export default function OpportunitiesPage() {
       setSubmitting(false);
     }
   }
+
+  const registeredUserIds = new Set(registrations.map(r => r.userId));
+  const walkInResults = walkInSearch.trim()
+    ? activeVolunteers
+        .filter(v => !registeredUserIds.has(v.user.id))
+        .filter(v => {
+          const q = walkInSearch.toLowerCase();
+          return v.user.name?.toLowerCase().includes(q) || v.user.email?.toLowerCase().includes(q);
+        })
+        .slice(0, 6)
+    : [];
 
   return (
     <div className="p-6 space-y-6">
@@ -158,26 +205,33 @@ export default function OpportunitiesPage() {
             <Card key={opp.id} className="flex flex-col">
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between gap-2">
-                  <CardTitle className="text-base leading-snug">{opp.title}</CardTitle>
+                  <Link href={`/opportunities/${opp.id}`} className="min-w-0">
+                    <CardTitle className="text-base leading-snug hover:text-[#3191c2] transition-colors">{opp.title}</CardTitle>
+                  </Link>
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ${statusColor[opp.status] ?? ''}`}>
-                    {opp.status}
+                    {OPPORTUNITY_STATUS_LABELS[opp.status] ?? humanize(opp.status)}
                   </span>
                 </div>
                 <div className="flex flex-wrap gap-1.5 mt-1">
-                  <Badge variant="outline" className="text-xs w-fit">{opp.programmeArea.replace('_', ' ')}</Badge>
+                  <Badge variant="outline" className="text-xs w-fit">
+                    {PROGRAMME_LABELS[opp.programmeArea] ?? humanize(opp.programmeArea)}
+                  </Badge>
                   {opp.safeguardingLevel && (
-                    <Badge variant="outline" className={`text-xs w-fit ${safeguardingColor[opp.safeguardingLevel] ?? ''}`}>
-                      Safeguarding: {opp.safeguardingLevel}
+                    <Badge variant="outline" className="text-xs w-fit">
+                      Safeguarding: {SAFEGUARDING_LEVEL_LABELS[opp.safeguardingLevel] ?? humanize(opp.safeguardingLevel)}
                     </Badge>
                   )}
                 </div>
               </CardHeader>
 
               <CardContent className="flex-1 space-y-2">
-                <div className="flex items-center gap-2 text-sm text-slate-600">
+                <Link
+                  href={`/opportunities/${opp.id}`}
+                  className="flex items-center gap-2 text-sm text-slate-600 hover:text-[#3191c2] transition-colors w-fit"
+                >
                   <Calendar className="w-3.5 h-3.5 shrink-0" />
-                  <span>{new Date(opp.dateTime).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</span>
-                </div>
+                  <span>{formatDateTime(opp.dateTime)}</span>
+                </Link>
                 <div className="flex items-center gap-2 text-sm text-slate-600">
                   <MapPin className="w-3.5 h-3.5 shrink-0" />
                   <span className="truncate">{opp.location}</span>
@@ -225,6 +279,10 @@ export default function OpportunitiesPage() {
                       Mark Attendance
                     </Button>
                   )}
+
+                  <Link href={`/opportunities/${opp.id}`}>
+                    <Button size="sm" variant="ghost" className="text-slate-600">View details</Button>
+                  </Link>
                 </div>
               </CardContent>
             </Card>
@@ -264,6 +322,46 @@ export default function OpportunitiesPage() {
                   </button>
                 );
               })
+            )}
+
+            {/* Walk-in search */}
+            {!attendanceLoading && (
+              <div className="pt-3 border-t space-y-2">
+                <p className="text-xs font-medium text-slate-600 flex items-center gap-1.5">
+                  <UserPlus className="w-3.5 h-3.5" /> Add walk-in volunteer
+                </p>
+                <Input
+                  placeholder="Search active volunteers by name or email"
+                  value={walkInSearch}
+                  onChange={e => setWalkInSearch(e.target.value)}
+                />
+                {walkInResults.length > 0 && (
+                  <div className="space-y-1.5">
+                    {walkInResults.map(v => (
+                      <div
+                        key={v.user.id}
+                        className="flex items-center justify-between gap-3 p-2.5 rounded-lg border"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-slate-900 truncate">{v.user.name}</p>
+                          <p className="text-xs text-slate-500 truncate">{v.user.email}</p>
+                        </div>
+                        <Button
+                          size="sm"
+                          className="bg-[#3191c2] hover:bg-[#2a7fa8] shrink-0"
+                          disabled={addingWalkIn === v.user.id}
+                          onClick={() => addWalkIn(v.user.id)}
+                        >
+                          {addingWalkIn === v.user.id ? 'Adding…' : 'Add'}
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {walkInSearch.trim() && walkInResults.length === 0 && (
+                  <p className="text-xs text-slate-400">No matching active volunteers.</p>
+                )}
+              </div>
             )}
           </div>
           <div className="flex justify-between items-center pt-2 border-t">

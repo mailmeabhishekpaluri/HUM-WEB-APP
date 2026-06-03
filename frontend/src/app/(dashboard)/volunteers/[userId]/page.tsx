@@ -18,23 +18,35 @@ import {
   ArrowLeft, Mail, MapPin, Building2, Calendar, Clock,
   Award, CheckCircle2, XCircle, PauseCircle, Shield, Star,
 } from 'lucide-react';
+import {
+  formatDate, formatDateTime, POLICE_STATUS_LABELS,
+  SAFEGUARDING_STATUS_LABELS, ACCOUNT_STATUS_LABELS, humanize,
+} from '@/lib/labels';
 
 interface VolunteerDetail {
   id: string;
   userId: string;
   city: string;
   organisation: string;
-  domain: string;
+  professionalDomain: string;
+  languages: string[];
+  availabilityDays: number[];
+  hoursPerWeek: number;
+  preferredProgrammes: string[];
+  motivationStatement: string;
+  emergencyContact: string;
   totalHours: number;
   sessionsAttended: number;
   accountStatus: string;
   policeVerification: string;
   safeguardingStatus: string;
-  createdAt: string;
+  joinedDate: string;
   user: { name: string; email: string };
   skills: { skill: { name: string } }[];
   badges: { badge: { name: string; description?: string; iconUrl?: string } }[];
 }
+
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 interface AttendanceRecord {
   id: string;
@@ -51,18 +63,27 @@ function StatusBadge({ status }: { status: string }) {
   };
   return (
     <Badge variant="outline" className={map[status] ?? 'bg-slate-100 text-slate-600'}>
-      {status.replace(/_/g, ' ')}
+      {ACCOUNT_STATUS_LABELS[status] ?? humanize(status)}
     </Badge>
   );
 }
 
-function VerificationBadge({ label, status, passValue }: { label: string; status: string; passValue: string }) {
+function VerificationBadge({ label, status, passValue, labels }: { label: string; status: string; passValue: string; labels: Record<string, string> }) {
   const passed = status === passValue;
   return (
     <Badge variant="outline" className={passed ? 'bg-green-50 text-green-700 border-green-200' : 'bg-amber-50 text-amber-700 border-amber-200'}>
       {passed ? <CheckCircle2 className="w-3 h-3 mr-1" /> : <Clock className="w-3 h-3 mr-1" />}
-      {label}: {status.replace(/_/g, ' ')}
+      {label}: {labels[status] ?? humanize(status)}
     </Badge>
+  );
+}
+
+function DetailItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className="text-xs font-medium text-slate-500 uppercase tracking-wide">{label}</dt>
+      <dd className="text-slate-800 mt-0.5 whitespace-pre-wrap">{value}</dd>
+    </div>
   );
 }
 
@@ -204,21 +225,21 @@ export default function VolunteerDetailPage() {
                     <span>{volunteer.organisation}</span>
                   </div>
                 )}
-                {volunteer.domain && (
+                {volunteer.professionalDomain && (
                   <div className="flex items-center gap-2 text-slate-600">
                     <Star className="w-4 h-4 text-slate-400 shrink-0" />
-                    <span>{volunteer.domain}</span>
+                    <span>{humanize(volunteer.professionalDomain)}</span>
                   </div>
                 )}
                 <div className="flex items-center gap-2 text-slate-600">
                   <Calendar className="w-4 h-4 text-slate-400 shrink-0" />
-                  <span>Joined {new Date(volunteer.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                  <span>Joined {formatDate(volunteer.joinedDate)}</span>
                 </div>
               </div>
 
               <div className="space-y-2 pt-2 border-t">
-                <VerificationBadge label="Safeguarding" status={volunteer.safeguardingStatus} passValue="PASS" />
-                <VerificationBadge label="Police Verification" status={volunteer.policeVerification} passValue="VERIFIED" />
+                <VerificationBadge label="Safeguarding" status={volunteer.safeguardingStatus} passValue="PASS" labels={SAFEGUARDING_STATUS_LABELS} />
+                <VerificationBadge label="Police Verification" status={volunteer.policeVerification} passValue="VERIFIED" labels={POLICE_STATUS_LABELS} />
               </div>
 
               {volunteer.skills.length > 0 && (
@@ -297,6 +318,38 @@ export default function VolunteerDetailPage() {
             </Card>
           </div>
 
+          {/* Details */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Details</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 text-sm">
+                <DetailItem label="City" value={volunteer.city || '—'} />
+                <DetailItem label="Professional Domain" value={volunteer.professionalDomain ? humanize(volunteer.professionalDomain) : '—'} />
+                <DetailItem label="Organisation" value={volunteer.organisation || '—'} />
+                <DetailItem label="Languages" value={volunteer.languages?.length ? volunteer.languages.join(', ') : '—'} />
+                <DetailItem
+                  label="Availability"
+                  value={volunteer.availabilityDays?.length
+                    ? volunteer.availabilityDays.map(d => WEEKDAYS[d] ?? d).join(', ')
+                    : '—'}
+                />
+                <DetailItem label="Hours / Week" value={volunteer.hoursPerWeek != null ? String(volunteer.hoursPerWeek) : '—'} />
+                <DetailItem
+                  label="Preferred Programmes"
+                  value={volunteer.preferredProgrammes?.length
+                    ? volunteer.preferredProgrammes.map(p => humanize(p)).join(', ')
+                    : '—'}
+                />
+                <DetailItem label="Emergency Contact" value={volunteer.emergencyContact || '—'} />
+                <div className="sm:col-span-2">
+                  <DetailItem label="Motivation" value={volunteer.motivationStatement || '—'} />
+                </div>
+              </dl>
+            </CardContent>
+          </Card>
+
           {/* Badges */}
           {volunteer.badges.length > 0 && (
             <Card>
@@ -350,7 +403,7 @@ export default function VolunteerDetailPage() {
                       <TableRow key={record.id}>
                         <TableCell className="font-medium text-sm">{record.opportunity.title}</TableCell>
                         <TableCell className="text-sm text-slate-500">
-                          {new Date(record.opportunity.dateTime).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          {formatDateTime(record.opportunity.dateTime)}
                         </TableCell>
                         <TableCell className="text-sm text-slate-500">{record.opportunity.location}</TableCell>
                         <TableCell className="text-sm">{record.hours ?? '-'}</TableCell>

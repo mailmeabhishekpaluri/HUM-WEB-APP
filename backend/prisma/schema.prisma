@@ -170,14 +170,6 @@ enum AccountStatus {
   DEACTIVATED
 }
 
-enum ProgrammeArea {
-  EDUCATION
-  HEALTH
-  NUTRITION
-  LIFE_SKILLS
-  SPORTS
-  OTHER
-}
 
 enum SafeguardingLevel {
   NONE_REQUIRED
@@ -633,7 +625,7 @@ model VolunteerAvailability {
 model Opportunity {
   id                String            @id @default(cuid())
   title             String
-  programmeArea     ProgrammeArea
+  programmeArea     Programme
   cciId             String?
   dateTime          DateTime
   durationMinutes   Int

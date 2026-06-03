@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
@@ -10,16 +11,19 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from '@/components/ui/dialog';
-import { CheckCircle2, XCircle, UserCheck, MapPin, Mail, Calendar } from 'lucide-react';
+import { CheckCircle2, XCircle, UserCheck, MapPin, Mail, Calendar, ArrowRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import {
+  formatDate, POLICE_STATUS_LABELS, SAFEGUARDING_STATUS_LABELS, humanize,
+} from '@/lib/labels';
 
 interface PendingVolunteer {
   id: string;
   userId: string;
   city: string;
-  createdAt: string;
+  joinedDate: string;
   safeguardingStatus: string;
   policeVerification: string;
   user: { name: string; email: string };
@@ -58,6 +62,7 @@ export default function PendingApprovalsPage() {
   const [loading, setLoading] = useState(true);
   const [rejectTarget, setRejectTarget] = useState<PendingVolunteer | null>(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [confirmTarget, setConfirmTarget] = useState<PendingVolunteer | null>(null);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [leaving, setLeaving] = useState<Set<string>>(new Set());
 
@@ -89,11 +94,22 @@ export default function PendingApprovalsPage() {
     }, 350);
   }
 
+  function requestApprove(v: PendingVolunteer) {
+    const unqualified =
+      v.safeguardingStatus !== 'PASS' || v.policeVerification === 'NOT_SUBMITTED';
+    if (unqualified) {
+      setConfirmTarget(v);
+    } else {
+      approve(v);
+    }
+  }
+
   async function approve(v: PendingVolunteer) {
     setProcessingId(v.userId);
     try {
       await api.patch(`/volunteers/${v.userId}/approve`);
       toast({ title: `${v.user.name} approved`, description: 'They can now log in as an active volunteer.' });
+      setConfirmTarget(null);
       removeWithAnimation(v.userId);
     } catch {
       toast({ title: 'Failed to approve volunteer', variant: 'destructive' });
@@ -179,7 +195,7 @@ export default function PendingApprovalsPage() {
                             )}
                             <span className="flex items-center gap-1">
                               <Calendar className="w-3.5 h-3.5" />
-                              Registered {new Date(v.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                              Registered {formatDate(v.joinedDate)}
                             </span>
                           </div>
                         </div>
@@ -191,7 +207,7 @@ export default function PendingApprovalsPage() {
                               ? 'bg-green-50 text-green-700 border-green-200'
                               : 'bg-slate-50 text-slate-500 border-slate-200'}
                           >
-                            Quiz: {v.safeguardingStatus === 'PASS' ? 'Passed' : 'Not Attempted'}
+                            Quiz: {SAFEGUARDING_STATUS_LABELS[v.safeguardingStatus] ?? humanize(v.safeguardingStatus)}
                           </Badge>
                           <Badge
                             variant="outline"
@@ -199,7 +215,7 @@ export default function PendingApprovalsPage() {
                               ? 'bg-green-50 text-green-700 border-green-200'
                               : 'bg-amber-50 text-amber-700 border-amber-200'}
                           >
-                            PV: {v.policeVerification.replace(/_/g, ' ')}
+                            PV: {POLICE_STATUS_LABELS[v.policeVerification] ?? humanize(v.policeVerification)}
                           </Badge>
                         </div>
 
@@ -212,6 +228,14 @@ export default function PendingApprovalsPage() {
                             ))}
                           </div>
                         )}
+
+                        <Link
+                          href={`/volunteers/${v.userId}`}
+                          className="inline-flex items-center gap-1 text-sm font-medium text-[#3191c2] hover:text-[#2a7fa8]"
+                        >
+                          View full profile
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </Link>
                       </div>
 
                       {canAct && (
@@ -220,7 +244,7 @@ export default function PendingApprovalsPage() {
                             size="sm"
                             className="bg-[#3191c2] hover:bg-[#2a7fa8] text-white gap-1.5"
                             disabled={isProcessing}
-                            onClick={() => approve(v)}
+                            onClick={() => requestApprove(v)}
                           >
                             <CheckCircle2 className="w-4 h-4" />
                             Approve
@@ -245,6 +269,27 @@ export default function PendingApprovalsPage() {
           })}
         </div>
       )}
+
+      <Dialog open={!!confirmTarget} onOpenChange={open => { if (!open) setConfirmTarget(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Approve {confirmTarget?.user.name} anyway?</DialogTitle>
+            <DialogDescription>
+              This volunteer has not passed the safeguarding quiz. They&apos;ll be restricted to non-CCI activities until it&apos;s passed. Approve anyway?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button variant="outline" onClick={() => setConfirmTarget(null)}>Cancel</Button>
+            <Button
+              className="bg-[#3191c2] hover:bg-[#2a7fa8] text-white"
+              disabled={processingId === confirmTarget?.userId}
+              onClick={() => confirmTarget && approve(confirmTarget)}
+            >
+              {processingId === confirmTarget?.userId ? 'Approving…' : 'Approve anyway'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!rejectTarget} onOpenChange={open => { if (!open) { setRejectTarget(null); setRejectReason(''); } }}>
         <DialogContent className="sm:max-w-md">

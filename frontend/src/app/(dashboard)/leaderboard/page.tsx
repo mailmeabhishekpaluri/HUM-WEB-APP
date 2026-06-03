@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Award, Trophy, Medal } from 'lucide-react';
+import { PERIOD_LABELS, humanize } from '@/lib/labels';
 
 interface LeaderboardEntry {
   rank: number;
@@ -85,11 +86,11 @@ export default function LeaderboardPage() {
           <label className="text-xs font-medium text-slate-500">Period</label>
           <Select value={period} onValueChange={v => setPeriod(v as 'THIS_MONTH' | 'ALL_TIME')}>
             <SelectTrigger className="w-40">
-              <SelectValue />
+              <SelectValue>{PERIOD_LABELS[period] ?? humanize(period)}</SelectValue>
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="ALL_TIME">All Time</SelectItem>
-              <SelectItem value="THIS_MONTH">This Month</SelectItem>
+              <SelectItem value="ALL_TIME">{PERIOD_LABELS.ALL_TIME ?? humanize('ALL_TIME')}</SelectItem>
+              <SelectItem value="THIS_MONTH">{PERIOD_LABELS.THIS_MONTH ?? humanize('THIS_MONTH')}</SelectItem>
             </SelectContent>
           </Select>
         </div>

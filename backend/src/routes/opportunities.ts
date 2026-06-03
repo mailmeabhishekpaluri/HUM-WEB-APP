@@ -100,4 +100,39 @@ router.patch('/:id/status', requireRole('SUPER_ADMIN', 'PROGRAM_MANAGER'), async
   } catch (err) { next(err); }
 });
 
+// Edit opportunity (full update)
+router.patch('/:id', requireRole('SUPER_ADMIN', 'PROGRAM_MANAGER'), async (req: AuthRequest, res, next) => {
+  try {
+    const { title, programmeArea, cciId, dateTime, durationMinutes, location, requiredCount, description, safeguardingLevel, status } = req.body;
+    const data: any = {};
+    if (title !== undefined) data.title = title;
+    if (programmeArea !== undefined) data.programmeArea = programmeArea;
+    if (cciId !== undefined) data.cciId = cciId || null;
+    if (dateTime !== undefined) data.dateTime = new Date(dateTime);
+    if (durationMinutes !== undefined) data.durationMinutes = Number(durationMinutes);
+    if (location !== undefined) data.location = location;
+    if (requiredCount !== undefined) data.requiredCount = Number(requiredCount);
+    if (description !== undefined) data.description = description;
+    if (safeguardingLevel !== undefined) data.safeguardingLevel = safeguardingLevel;
+    if (status !== undefined) data.status = status;
+    const opp = await prisma.opportunity.update({ where: { id: req.params.id }, data });
+    res.json(opp);
+  } catch (err) { next(err); }
+});
+
+// Walk-in attendance — register an active volunteer on the spot and mark attended
+router.post('/:id/walk-in', requireRole('SUPER_ADMIN', 'PROGRAM_MANAGER', 'CCI_MANAGER'), async (req: AuthRequest, res, next) => {
+  try {
+    const { volunteerUserId } = req.body;
+    const profile = await prisma.volunteerProfile.findUnique({ where: { userId: volunteerUserId } });
+    if (!profile) return res.status(404).json({ error: 'Volunteer not found' });
+    const existing = await prisma.eventRegistration.findFirst({ where: { opportunityId: req.params.id, volunteerId: profile.id } });
+    if (!existing) {
+      await prisma.eventRegistration.create({ data: { opportunityId: req.params.id, volunteerId: profile.id, status: 'REGISTERED' } });
+    }
+    const result = await volunteerService.markAttendance(req.params.id, volunteerUserId, true, req.user!.id);
+    res.json(result);
+  } catch (err) { next(err); }
+});
+
 export default router;
