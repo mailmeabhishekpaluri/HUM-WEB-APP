@@ -151,6 +151,25 @@ enum Programme {
   P5_LIBRARY
 }
 
+enum SessionCadence {
+  WEEKLY_MWF
+  ALTERNATE_SUNDAY
+  MONTHLY
+  BIMONTHLY
+  QUARTERLY
+  CUSTOM
+}
+
+enum SessionDeliveryMode {
+  ONLINE
+  ON_GROUND
+}
+
+enum DedicatedTeamRole {
+  DEDICATED
+  SUPPORT
+}
+
 enum PoliceStatus {
   NOT_SUBMITTED
   SUBMITTED_PENDING
@@ -242,6 +261,15 @@ enum NotificationType {
   CHILD_ABSENT
   CRITICAL_INCIDENT
   VISIT_LOG_ADDED
+  CLASS_REMINDER
+  SESSION_REMINDER
+  LESSON_PLAN_DUE
+  FEEDBACK_DUE
+  SUBSTITUTION_REQUESTED
+  SUBSTITUTION_FILLED
+  SESSION_ASSIGNED
+  READING_ASSESSMENT_DUE
+  HEALTH_CHECKUP_DUE
 }
 
 // ─── Users & Auth ────────────────────────────────────────────────────────────
@@ -592,6 +620,7 @@ model VolunteerProfile {
   eventRegistrations EventRegistration[]
   badges             VolunteerBadge[]
   hoursClaims        HoursClaim[]
+  programmeAssignments ProgrammeAssignment[]
 }
 
 model Skill {
@@ -634,12 +663,17 @@ model Opportunity {
   description       String?
   safeguardingLevel SafeguardingLevel @default(NONE_REQUIRED)
   status            OpportunityStatus @default(DRAFT)
+  deliveryMode      SessionDeliveryMode @default(ON_GROUND)
+  curriculumItemId  String?
+  recurringSeriesId String?
+  studentCount      Int?
   createdById       String
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
 
   requiredSkills OpportunitySkill[]
   registrations  EventRegistration[]
+  sessionFeedback SessionFeedback?
 }
 
 model OpportunitySkill {
@@ -649,6 +683,60 @@ model OpportunitySkill {
   skill         Skill       @relation(fields: [skillId], references: [id])
 
   @@id([opportunityId, skillId])
+}
+
+// Recurring session template shared by all five programmes (cadence-driven scheduling).
+model RecurringSeries {
+  id               String              @id @default(cuid())
+  title            String
+  programmeArea    Programme
+  cadence          SessionCadence
+  deliveryMode     SessionDeliveryMode @default(ON_GROUND)
+  cciId            String?
+  startDate        DateTime
+  endDate          DateTime?
+  defaultStartTime String              // "17:00" IST
+  durationMinutes  Int                 @default(60)
+  requiredCount    Int                 @default(1)
+  isActive         Boolean             @default(true)
+  config           Json?               // cadence-specific (e.g. alternate-Sunday partner programme, MWF subject map)
+  createdById      String
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+}
+
+// Dedicated volunteer rosters (Health=5, Library=5; others can still volunteer ad hoc)
+model ProgrammeAssignment {
+  id           String            @id @default(cuid())
+  volunteerId  String
+  volunteer    VolunteerProfile  @relation(fields: [volunteerId], references: [id])
+  programme    Programme
+  teamRole     DedicatedTeamRole @default(DEDICATED)
+  assignedById String
+  assignedAt   DateTime          @default(now())
+  isActive     Boolean           @default(true)
+
+  @@unique([volunteerId, programme])
+}
+
+// Per-session feedback for on-ground programmes (SEL, DLAI, Health, Library).
+// Captures BOTH volunteer participation and child participation, per the brief.
+model SessionFeedback {
+  id                           String      @id @default(cuid())
+  opportunityId                String      @unique
+  opportunity                  Opportunity @relation(fields: [opportunityId], references: [id])
+  childrenPresent              Int?
+  childrenEngaged              Int?
+  childParticipationRating     Int?        // 1-5
+  volunteerParticipationRating Int?        // 1-5
+  volunteersPresent            Int?
+  whatWentWell                 String?
+  challenges                   String?
+  followUpNeeded               Boolean     @default(false)
+  followUpNotes                String?
+  submittedById                String
+  createdAt                    DateTime    @default(now())
+  updatedAt                    DateTime    @updatedAt
 }
 
 model EventRegistration {

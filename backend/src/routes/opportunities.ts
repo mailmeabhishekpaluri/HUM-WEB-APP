@@ -136,4 +136,44 @@ router.post('/:id/walk-in', requireRole('SUPER_ADMIN', 'PROGRAM_MANAGER', 'CCI_M
   } catch (err) { next(err); }
 });
 
+// Get session feedback for an opportunity
+router.get('/:id/feedback', async (req: AuthRequest, res, next) => {
+  try {
+    const feedback = await prisma.sessionFeedback.findUnique({ where: { opportunityId: req.params.id } });
+    res.json(feedback);
+  } catch (err) { next(err); }
+});
+
+// Create or update session feedback (registered volunteer or a manager)
+router.post('/:id/feedback', async (req: AuthRequest, res, next) => {
+  try {
+    const role = req.user!.role;
+    const isManager = ['SUPER_ADMIN', 'PROGRAM_MANAGER', 'CCI_MANAGER'].includes(role);
+    if (!isManager) {
+      // a volunteer may only submit feedback for a session they were registered to
+      const profile = await prisma.volunteerProfile.findUnique({ where: { userId: req.user!.id } });
+      const reg = profile && await prisma.eventRegistration.findFirst({ where: { opportunityId: req.params.id, volunteerId: profile.id } });
+      if (!reg) return res.status(403).json({ error: 'Not registered for this session' });
+    }
+    const b = req.body;
+    const fields = {
+      childrenPresent: b.childrenPresent ?? null,
+      childrenEngaged: b.childrenEngaged ?? null,
+      childParticipationRating: b.childParticipationRating ?? null,
+      volunteerParticipationRating: b.volunteerParticipationRating ?? null,
+      volunteersPresent: b.volunteersPresent ?? null,
+      whatWentWell: b.whatWentWell ?? null,
+      challenges: b.challenges ?? null,
+      followUpNeeded: b.followUpNeeded ?? false,
+      followUpNotes: b.followUpNotes ?? null,
+    };
+    const feedback = await prisma.sessionFeedback.upsert({
+      where: { opportunityId: req.params.id },
+      update: fields,
+      create: { opportunityId: req.params.id, submittedById: req.user!.id, ...fields },
+    });
+    res.status(201).json(feedback);
+  } catch (err) { next(err); }
+});
+
 export default router;

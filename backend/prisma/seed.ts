@@ -1,4 +1,4 @@
-import { PrismaClient, Role, BadgeTrigger } from '@prisma/client';
+import { PrismaClient, Role, BadgeTrigger, Programme, SessionCadence, SessionDeliveryMode, DedicatedTeamRole } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -47,6 +47,65 @@ async function main() {
   ];
   for (const b of badges) {
     await prisma.badge.upsert({ where: { name: b.name }, update: {}, create: b });
+  }
+
+  // ── Foundation scheduling demo data ──────────────────────────────────────
+  // Demo volunteer + profile (so programme rosters aren't empty)
+  const demoVolUser = await prisma.user.upsert({
+    where: { email: 'kavitha@volunteer.humanityorg.foundation' },
+    update: {},
+    create: {
+      email: 'kavitha@volunteer.humanityorg.foundation',
+      name: 'Kavitha Rao',
+      mobile: '9000000001',
+      role: Role.VOLUNTEER,
+      accountStatus: 'ACTIVE',
+      passwordHash: await bcrypt.hash('Volunteer@123', 10),
+    },
+  });
+  const demoProfile = await prisma.volunteerProfile.upsert({
+    where: { userId: demoVolUser.id },
+    update: {},
+    create: { userId: demoVolUser.id, city: 'Hyderabad', accountStatus: 'ACTIVE' },
+  });
+
+  // Demo recurring series (find-or-create by title — RecurringSeries has no natural unique key)
+  const demoSeries = [
+    {
+      title: 'SEL Weekend Sessions',
+      programmeArea: Programme.P2_SEL,
+      cadence: SessionCadence.ALTERNATE_SUNDAY,
+      deliveryMode: SessionDeliveryMode.ON_GROUND,
+      startDate: new Date('2026-06-07T00:00:00+05:30'),
+      defaultStartTime: '10:00',
+      durationMinutes: 90,
+      requiredCount: 4,
+    },
+    {
+      title: 'Education Dev — Grade 8-10 (MWF)',
+      programmeArea: Programme.P1_EDUCATION,
+      cadence: SessionCadence.WEEKLY_MWF,
+      deliveryMode: SessionDeliveryMode.ONLINE,
+      startDate: new Date('2026-06-01T00:00:00+05:30'),
+      defaultStartTime: '17:00',
+      durationMinutes: 60,
+      requiredCount: 1,
+    },
+  ];
+  for (const s of demoSeries) {
+    const existing = await prisma.recurringSeries.findFirst({ where: { title: s.title, programmeArea: s.programmeArea } });
+    if (!existing) {
+      await prisma.recurringSeries.create({ data: { ...s, createdById: superAdmin.id } });
+    }
+  }
+
+  // Demo programme assignments (idempotent on [volunteerId, programme])
+  for (const programme of [Programme.P2_SEL, Programme.P4_HEALTH_NUTRITION]) {
+    await prisma.programmeAssignment.upsert({
+      where: { volunteerId_programme: { volunteerId: demoProfile.id, programme } },
+      update: {},
+      create: { volunteerId: demoProfile.id, programme, teamRole: DedicatedTeamRole.DEDICATED, assignedById: superAdmin.id },
+    });
   }
 
   console.log('Seed complete. Admin: admin@humanityorg.foundation / Admin@123');

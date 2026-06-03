@@ -13,6 +13,8 @@ import notificationRoutes from './routes/notifications';
 import searchRoutes from './routes/search';
 import reportRoutes from './routes/reports';
 import auditRoutes from './routes/audit';
+import seriesRoutes from './routes/series';
+import teamRoutes from './routes/teams';
 import { errorHandler } from './middleware/errorHandler';
 
 export const app = express();
@@ -33,6 +35,8 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/audit', auditRoutes);
+app.use('/api/series', seriesRoutes);
+app.use('/api/teams', teamRoutes);
 
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
 
