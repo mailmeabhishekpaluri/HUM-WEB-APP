@@ -1,8 +1,15 @@
 import { z } from 'zod';
 
 export const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(6),
+  identifier: z.string().min(3).optional(),
+  email: z.string().optional(),
+  password: z.string().min(1),
+}).refine(d => d.identifier || d.email, { message: 'identifier or email required' });
+
+export const volunteerCreateSchema = z.object({
+  name: z.string().min(2),
+  mobile: z.string().min(7),
+  email: z.string().email().optional().or(z.literal('')),
 });
 
 export const registerSchema = z.object({

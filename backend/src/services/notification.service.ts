@@ -1,6 +1,7 @@
 import { prisma } from '../lib/prisma';
 import { NotificationType, Role } from '@prisma/client';
 import { sendEmail } from './email.service';
+import { sendWhatsApp } from './whatsapp.service';
 
 export async function createNotification(data: {
   userId: string;
@@ -9,7 +10,7 @@ export async function createNotification(data: {
   type: NotificationType;
   data?: object;
 }) {
-  return prisma.notification.create({
+  const notification = await prisma.notification.create({
     data: {
       userId: data.userId,
       title: data.title,
@@ -18,6 +19,15 @@ export async function createNotification(data: {
       data: data.data as any,
     },
   });
+
+  // Mirror the notification to WhatsApp (no-op until WhatsApp creds are set).
+  // Fire-and-forget so a WhatsApp hiccup never blocks the in-app notification.
+  prisma.user
+    .findUnique({ where: { id: data.userId }, select: { mobile: true } })
+    .then(u => sendWhatsApp(u?.mobile, `*${data.title}*\n\n${data.body}\n\n— HUManity Foundation`))
+    .catch(() => {});
+
+  return notification;
 }
 
 export async function notifyComplianceDue(cciId: string, complianceType: string, dueDate: Date) {

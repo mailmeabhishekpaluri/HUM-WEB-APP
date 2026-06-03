@@ -18,13 +18,18 @@ export function signRefreshToken(userId: string) {
   } as jwt.SignOptions);
 }
 
-export async function login(email: string, password: string) {
-  const user = await prisma.user.findUnique({ where: { email } });
+export async function login(identifier: string, password: string) {
+  // Accept either email or phone number as the login identifier
+  const id = identifier.trim();
+  const isEmail = id.includes('@');
+  const user = isEmail
+    ? await prisma.user.findUnique({ where: { email: id } })
+    : await prisma.user.findUnique({ where: { mobile: id } });
   if (!user?.passwordHash) throw new Error('Invalid credentials');
   const valid = await bcrypt.compare(password, user.passwordHash);
   if (!valid) throw new Error('Invalid credentials');
   if (!user.isActive) throw new Error('Account deactivated');
-  const accessToken = signAccessToken(user.id, user.role, user.email);
+  const accessToken = signAccessToken(user.id, user.role, user.email ?? "");
   const refreshToken = signRefreshToken(user.id);
   await prisma.refreshToken.create({
     data: {
@@ -53,13 +58,43 @@ export async function createUser(data: {
   return user;
 }
 
+// Generate a readable temporary password e.g. "Hum-4827"
+function generateTempPassword(): string {
+  const n = Math.floor(1000 + Math.random() * 9000);
+  return `Hum-${n}`;
+}
+
+export async function createVolunteer(data: { name: string; mobile: string; email?: string }) {
+  const mobile = data.mobile.trim();
+  const existing = await prisma.user.findFirst({
+    where: { OR: [{ mobile }, ...(data.email ? [{ email: data.email.trim() }] : [])] },
+  });
+  if (existing) throw new Error('A user with this phone number or email already exists');
+
+  const tempPassword = generateTempPassword();
+  const passwordHash = await bcrypt.hash(tempPassword, 10);
+  const user = await prisma.user.create({
+    data: {
+      name: data.name.trim(),
+      mobile,
+      email: data.email?.trim() || null,
+      role: Role.VOLUNTEER,
+      passwordHash,
+      accountStatus: 'PENDING',
+    },
+    select: { id: true, name: true, mobile: true, email: true, role: true },
+  });
+  await prisma.volunteerProfile.create({ data: { userId: user.id } });
+  return { user, tempPassword };
+}
+
 export async function refreshAccessToken(token: string) {
   const stored = await prisma.refreshToken.findUnique({ where: { token } });
   if (!stored || stored.expiresAt < new Date()) throw new Error('Invalid refresh token');
   const payload = jwt.verify(token, REFRESH_SECRET) as { userId: string };
   const user = await prisma.user.findUnique({ where: { id: payload.userId } });
   if (!user) throw new Error('User not found');
-  const accessToken = signAccessToken(user.id, user.role, user.email);
+  const accessToken = signAccessToken(user.id, user.role, user.email ?? "");
   return { accessToken };
 }
 

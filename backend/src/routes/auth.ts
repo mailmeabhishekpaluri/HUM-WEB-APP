@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { login, createUser, refreshAccessToken } from '../services/auth.service';
-import { loginSchema, registerSchema } from '../lib/validators';
+import { login, createUser, createVolunteer, refreshAccessToken } from '../services/auth.service';
+import { loginSchema, registerSchema, volunteerCreateSchema } from '../lib/validators';
 import { requireAuth, AuthRequest } from '../middleware/auth';
 import { requireRole } from '../middleware/rbac';
 import { Role } from '@prisma/client';
@@ -9,8 +9,8 @@ const router = Router();
 
 router.post('/login', async (req, res, next) => {
   try {
-    const { email, password } = loginSchema.parse(req.body);
-    const result = await login(email, password);
+    const body = loginSchema.parse(req.body);
+    const result = await login((body.identifier || body.email)!, body.password);
     res.json(result);
   } catch (err) { next(err); }
 });
@@ -29,6 +29,15 @@ router.post('/users', requireAuth, requireRole('SUPER_ADMIN', 'PROGRAM_MANAGER')
     const data = registerSchema.parse(req.body);
     const user = await createUser(data as { email: string; password: string; name: string; role: Role; mobile?: string });
     res.status(201).json(user);
+  } catch (err) { next(err); }
+});
+
+// Simplified volunteer creation — name + phone (+ optional email); returns a temp password
+router.post('/volunteers', requireAuth, requireRole('SUPER_ADMIN', 'PROGRAM_MANAGER', 'CCI_MANAGER'), async (req: AuthRequest, res, next) => {
+  try {
+    const data = volunteerCreateSchema.parse(req.body);
+    const { user, tempPassword } = await createVolunteer({ name: data.name, mobile: data.mobile, email: data.email || undefined });
+    res.status(201).json({ user, tempPassword });
   } catch (err) { next(err); }
 });
 
