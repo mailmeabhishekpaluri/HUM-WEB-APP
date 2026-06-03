@@ -71,18 +71,18 @@ export function humanize(value?: string | null): string {
     .join(' ');
 }
 
-/** Safe date formatter — returns '—' for null/invalid dates. */
+/** Safe date formatter (IST) — returns '—' for null/invalid dates. */
 export function formatDate(value?: string | Date | null): string {
   if (!value) return '—';
   const d = new Date(value);
   if (isNaN(d.getTime())) return '—';
-  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' });
 }
 
-/** Safe date-time formatter in IST, no manual offset. */
+/** Safe date-time formatter, always rendered in IST regardless of viewer locale. */
 export function formatDateTime(value?: string | Date | null): string {
   if (!value) return '—';
   const d = new Date(value);
   if (isNaN(d.getTime())) return '—';
-  return d.toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' });
 }

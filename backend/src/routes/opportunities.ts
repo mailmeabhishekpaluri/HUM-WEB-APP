@@ -3,6 +3,7 @@ import { requireAuth, AuthRequest } from '../middleware/auth';
 import { requireRole } from '../middleware/rbac';
 import * as volunteerService from '../services/volunteer.service';
 import { prisma } from '../lib/prisma';
+import { parseISTDate } from '../lib/datetime';
 
 const router = Router();
 router.use(requireAuth);
@@ -108,7 +109,7 @@ router.patch('/:id', requireRole('SUPER_ADMIN', 'PROGRAM_MANAGER'), async (req: 
     if (title !== undefined) data.title = title;
     if (programmeArea !== undefined) data.programmeArea = programmeArea;
     if (cciId !== undefined) data.cciId = cciId || null;
-    if (dateTime !== undefined) data.dateTime = new Date(dateTime);
+    if (dateTime !== undefined) data.dateTime = parseISTDate(dateTime);
     if (durationMinutes !== undefined) data.durationMinutes = Number(durationMinutes);
     if (location !== undefined) data.location = location;
     if (requiredCount !== undefined) data.requiredCount = Number(requiredCount);

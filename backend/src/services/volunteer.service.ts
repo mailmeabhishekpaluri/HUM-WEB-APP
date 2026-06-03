@@ -1,6 +1,7 @@
 import { prisma } from '../lib/prisma';
 import { AccountStatus, BadgeTrigger, PoliceStatus, SafeguardingStatus, Role } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { parseISTDate } from '../lib/datetime';
 
 export async function registerVolunteer(data: {
   name: string; email: string; mobile: string; city: string; password?: string;
@@ -170,7 +171,7 @@ export async function createOpportunity(data: {
       title: data.title,
       programmeArea: data.programmeArea as any,
       cciId: data.cciId,
-      dateTime: new Date(data.dateTime),
+      dateTime: parseISTDate(data.dateTime),
       durationMinutes: data.durationMinutes,
       location: data.location,
       requiredCount: data.requiredCount,
