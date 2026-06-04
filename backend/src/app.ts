@@ -15,8 +15,10 @@ import reportRoutes from './routes/reports';
 import auditRoutes from './routes/audit';
 import seriesRoutes from './routes/series';
 import teamRoutes from './routes/teams';
+import healthRoutes from './routes/health';
 import classRoutes from './routes/classes';
 import programRoutes from './routes/programs';
+import libraryRoutes from './routes/library';
 import { errorHandler } from './middleware/errorHandler';
 
 export const app = express();
@@ -39,9 +41,11 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/audit', auditRoutes);
 app.use('/api/series', seriesRoutes);
 app.use('/api/teams', teamRoutes);
+app.use('/api/health', healthRoutes);
+app.use('/api/library', libraryRoutes);
 app.use('/api/classes', classRoutes);
 app.use('/api/programs', programRoutes);
 
-app.get('/api/health', (_req, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
+app.get('/api/healthz', (_req, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
 
 app.use(errorHandler);

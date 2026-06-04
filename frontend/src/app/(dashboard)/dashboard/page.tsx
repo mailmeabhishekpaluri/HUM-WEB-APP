@@ -23,6 +23,7 @@ import { api } from '@/lib/api';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { PROGRAMME_LABELS, PROGRAMME_OPTIONS, humanize, formatDate } from '@/lib/labels';
+import { ProgrammeTiles } from '@/components/shared/ProgrammeTiles';
 
 interface Summary {
   cciCount: number;
@@ -88,6 +89,7 @@ function StatSkeleton() {
 function AdminDashboard({ summary, loading }: { summary: Summary | null; loading: boolean }) {
   return (
     <>
+      <ProgrammeTiles />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {loading ? (
           Array.from({ length: 5 }).map((_, i) => <StatSkeleton key={i} />)

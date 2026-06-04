@@ -149,6 +149,28 @@ export const CURRICULUM_TYPE_LABELS: Record<string, string> = {
   DIGITAL_LITERACY: 'Digital Literacy & AI',
 };
 
+export const HEALTH_EVENT_TYPE_LABELS: Record<string, string> = {
+  QUARTERLY_CHECKUP: 'Quarterly Health Checkup',
+  MONTHLY_AWARENESS: 'Monthly Awareness Activity',
+};
+
+export const READING_LEVEL_LABELS: Record<string, string> = {
+  BEGINNER: 'Beginner',
+  LETTER: 'Letter',
+  WORD: 'Word',
+  PARAGRAPH: 'Paragraph',
+  STORY: 'Story',
+  NOT_ASSESSED: 'Not Assessed',
+};
+export const READING_LEVEL_OPTIONS = [
+  { value: 'BEGINNER', label: 'Beginner' },
+  { value: 'LETTER', label: 'Letter' },
+  { value: 'WORD', label: 'Word' },
+  { value: 'PARAGRAPH', label: 'Paragraph' },
+  { value: 'STORY', label: 'Story' },
+];
+export const READING_LEVEL_ORDER = ['BEGINNER', 'LETTER', 'WORD', 'PARAGRAPH', 'STORY'] as const;
+
 const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 export function weekdayName(n: number): string {
   return WEEKDAY_NAMES[n] ?? '—';

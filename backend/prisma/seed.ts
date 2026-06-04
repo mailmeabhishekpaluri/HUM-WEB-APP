@@ -1,4 +1,4 @@
-import { PrismaClient, Role, BadgeTrigger, Programme, SessionCadence, SessionDeliveryMode, DedicatedTeamRole, Grade, ClassSubject, CCIType, FundingType, Gender, AdmissionSource, ChildCategory, CurriculumType } from '@prisma/client';
+import { PrismaClient, Role, BadgeTrigger, Programme, SessionCadence, SessionDeliveryMode, DedicatedTeamRole, Grade, ClassSubject, CCIType, FundingType, Gender, AdmissionSource, ChildCategory, CurriculumType, ReadingLevel } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { materializeUpcomingClassSessions } from '../src/services/education.service';
 
@@ -317,6 +317,225 @@ async function main() {
     }
   }
   console.log('SEL/DLAI: 12 SEL + 4 DLAI curriculum items seeded; 2 upcoming Sunday sessions created.');
+
+  // ── Health & Nutrition (P4) demo data ───────────────────────────────────
+  const demoCCI2 = await prisma.cCI.upsert({
+    where: { registrationNumber: 'JJ-DEMO-0002' },
+    update: {},
+    create: {
+      name: 'Sahaya Girls Home',
+      type: CCIType.CHILDRENS_HOME,
+      registrationNumber: 'JJ-DEMO-0002',
+      district: 'Hyderabad',
+      state: 'Telangana',
+      fullAddress: '24 Jubilee Hills, Hyderabad',
+      sanctionedCapacityBoys: 0,
+      sanctionedCapacityGirls: 40,
+      currentOccupancy: 32,
+      superintendentName: 'Ms. Lakshmi',
+      superintendentPhone: '9000000020',
+      managingSociety: 'Sahaya Trust',
+      fundingType: FundingType.NGO_FUNDED,
+    },
+  });
+
+  const healthVolunteers = await prisma.volunteerProfile.findMany({ take: 5 });
+  for (const vp of healthVolunteers) {
+    await prisma.programmeAssignment.upsert({
+      where: { volunteerId_programme: { volunteerId: vp.id, programme: Programme.P4_HEALTH_NUTRITION } },
+      update: { teamRole: DedicatedTeamRole.DEDICATED, isActive: true },
+      create: { volunteerId: vp.id, programme: Programme.P4_HEALTH_NUTRITION, teamRole: DedicatedTeamRole.DEDICATED, assignedById: superAdmin.id },
+    });
+  }
+
+  const pad2 = (n: number) => String(n).padStart(2, '0');
+  function istInDays(days: number, time: string): Date {
+    const base = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+    const utc = new Date(base.getTime() + 5.5 * 60 * 60 * 1000);
+    const y = utc.getUTCFullYear();
+    const m = utc.getUTCMonth() + 1;
+    const d = utc.getUTCDate();
+    return new Date(`${y}-${pad2(m)}-${pad2(d)}T${time}:00+05:30`);
+  }
+
+  const checkupDate = istInDays(10, '10:00');
+  const checkupExisting = await prisma.opportunity.findFirst({
+    where: { programmeArea: Programme.P4_HEALTH_NUTRITION, healthEventType: 'QUARTERLY_CHECKUP', dateTime: checkupDate, cciId: demoCCI.id },
+  });
+  if (!checkupExisting) {
+    await prisma.opportunity.create({
+      data: {
+        title: `Quarterly Health Checkup — ${demoCCI.name}`,
+        programmeArea: Programme.P4_HEALTH_NUTRITION,
+        healthEventType: 'QUARTERLY_CHECKUP',
+        cciId: demoCCI.id,
+        dateTime: checkupDate,
+        durationMinutes: 120,
+        location: `${demoCCI.name}, ${demoCCI.district}`,
+        requiredCount: 4,
+        studentCount: demoCCI.currentOccupancy,
+        deliveryMode: SessionDeliveryMode.ON_GROUND,
+        status: 'DRAFT',
+        createdById: superAdmin.id,
+      },
+    });
+  }
+
+  const awarenessDate = istInDays(7, '10:00');
+  const awarenessExisting = await prisma.opportunity.findFirst({
+    where: { programmeArea: Programme.P4_HEALTH_NUTRITION, healthEventType: 'MONTHLY_AWARENESS', dateTime: awarenessDate, cciId: demoCCI2.id },
+  });
+  if (!awarenessExisting) {
+    await prisma.opportunity.create({
+      data: {
+        title: `Monthly Health Awareness — ${demoCCI2.name}`,
+        programmeArea: Programme.P4_HEALTH_NUTRITION,
+        healthEventType: 'MONTHLY_AWARENESS',
+        cciId: demoCCI2.id,
+        dateTime: awarenessDate,
+        durationMinutes: 90,
+        location: `${demoCCI2.name}, ${demoCCI2.district}`,
+        requiredCount: 3,
+        studentCount: demoCCI2.currentOccupancy,
+        deliveryMode: SessionDeliveryMode.ON_GROUND,
+        status: 'OPEN',
+        createdById: superAdmin.id,
+      },
+    });
+  }
+
+  const quarterlySeriesP4 = await prisma.recurringSeries.findFirst({
+    where: { programmeArea: Programme.P4_HEALTH_NUTRITION, cadence: SessionCadence.QUARTERLY, cciId: demoCCI.id },
+  });
+  if (!quarterlySeriesP4) {
+    await prisma.recurringSeries.create({
+      data: {
+        title: 'Quarterly Health Checkup — Asha',
+        programmeArea: Programme.P4_HEALTH_NUTRITION,
+        cadence: SessionCadence.QUARTERLY,
+        deliveryMode: SessionDeliveryMode.ON_GROUND,
+        cciId: demoCCI.id,
+        startDate: istInDays(10, '10:00'),
+        defaultStartTime: '10:00',
+        durationMinutes: 120,
+        requiredCount: 4,
+        createdById: superAdmin.id,
+      },
+    });
+  }
+
+  const monthlySeriesP4 = await prisma.recurringSeries.findFirst({
+    where: { programmeArea: Programme.P4_HEALTH_NUTRITION, cadence: SessionCadence.MONTHLY, cciId: demoCCI.id },
+  });
+  if (!monthlySeriesP4) {
+    await prisma.recurringSeries.create({
+      data: {
+        title: 'Monthly Health Awareness',
+        programmeArea: Programme.P4_HEALTH_NUTRITION,
+        cadence: SessionCadence.MONTHLY,
+        deliveryMode: SessionDeliveryMode.ON_GROUND,
+        cciId: demoCCI.id,
+        startDate: istInDays(7, '10:00'),
+        defaultStartTime: '10:00',
+        durationMinutes: 90,
+        requiredCount: 3,
+        createdById: superAdmin.id,
+      },
+    });
+  }
+
+  console.log('Health: team + 2 upcoming activities + 2 series seeded');
+
+  // ── Library Project (P5) demo data ──────────────────────────────────────
+  const libraryVolunteers = await prisma.volunteerProfile.findMany({ take: 5 });
+  for (const v of libraryVolunteers) {
+    const existing = await prisma.programmeAssignment.findUnique({
+      where: { volunteerId_programme: { volunteerId: v.id, programme: Programme.P5_LIBRARY } },
+    });
+    if (!existing) {
+      await prisma.programmeAssignment.create({
+        data: {
+          volunteerId: v.id,
+          programme: Programme.P5_LIBRARY,
+          teamRole: DedicatedTeamRole.DEDICATED,
+          assignedById: superAdmin.id,
+        },
+      });
+    }
+  }
+
+  let librarySeries = await prisma.recurringSeries.findFirst({
+    where: { programmeArea: Programme.P5_LIBRARY, cadence: SessionCadence.MONTHLY, cciId: demoCCI.id },
+  });
+  if (!librarySeries) {
+    librarySeries = await prisma.recurringSeries.create({
+      data: {
+        title: 'Library — Monthly Pratham Sessions',
+        programmeArea: Programme.P5_LIBRARY,
+        cadence: SessionCadence.MONTHLY,
+        deliveryMode: SessionDeliveryMode.ON_GROUND,
+        cciId: demoCCI.id,
+        startDate: new Date('2026-06-15T00:00:00+05:30'),
+        defaultStartTime: '10:30',
+        durationMinutes: 90,
+        requiredCount: 3,
+        createdById: superAdmin.id,
+      },
+    });
+  }
+
+  const upcomingLibraryDate = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000);
+  upcomingLibraryDate.setUTCHours(5, 0, 0, 0); // 10:30 IST
+  const existingLibraryOpp = await prisma.opportunity.findFirst({
+    where: {
+      programmeArea: Programme.P5_LIBRARY,
+      cciId: demoCCI.id,
+      title: 'Library — Pratham Reading Session',
+    },
+  });
+  if (!existingLibraryOpp) {
+    await prisma.opportunity.create({
+      data: {
+        title: 'Library — Pratham Reading Session',
+        programmeArea: Programme.P5_LIBRARY,
+        cciId: demoCCI.id,
+        dateTime: upcomingLibraryDate,
+        durationMinutes: 90,
+        location: `${demoCCI.name}, ${demoCCI.district}`,
+        requiredCount: 3,
+        deliveryMode: SessionDeliveryMode.ON_GROUND,
+        status: 'OPEN',
+        createdById: superAdmin.id,
+        recurringSeriesId: librarySeries.id,
+      },
+    });
+  }
+
+  const baseAssessmentDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const assessmentSeeds: Array<{ childId: string; level: ReadingLevel }> = [
+    { childId: 'STU-001', level: ReadingLevel.BEGINNER },
+    { childId: 'STU-002', level: ReadingLevel.LETTER },
+    { childId: 'STU-003', level: ReadingLevel.WORD },
+    { childId: 'STU-004', level: ReadingLevel.PARAGRAPH },
+  ];
+  for (const seed of assessmentSeeds) {
+    const child = await prisma.child.findUnique({ where: { childId: seed.childId } });
+    if (!child) continue;
+    const existingAssessment = await prisma.readingAssessment.findFirst({ where: { childId: child.id } });
+    if (existingAssessment) continue;
+    await prisma.readingAssessment.create({
+      data: {
+        childId: child.id,
+        date: baseAssessmentDate,
+        level: seed.level,
+        bookTitle: 'Pratham Storybook',
+        prathamGroup: 'Group A',
+        assessedById: superAdmin.id,
+      },
+    });
+  }
+
+  console.log('Library: team + 1 series + 1 activity + assessments seeded');
 
   console.log('Seed complete. Admin: admin@humanityorg.foundation / Admin@123');
 }

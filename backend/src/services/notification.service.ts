@@ -2,6 +2,7 @@ import { prisma } from '../lib/prisma';
 import { NotificationType, Role } from '@prisma/client';
 import { sendEmail } from './email.service';
 import { sendWhatsApp } from './whatsapp.service';
+import { sendPush } from './webpush.service';
 
 export async function createNotification(data: {
   userId: string;
@@ -20,12 +21,13 @@ export async function createNotification(data: {
     },
   });
 
-  // Mirror the notification to WhatsApp (no-op until WhatsApp creds are set).
-  // Fire-and-forget so a WhatsApp hiccup never blocks the in-app notification.
+  // Mirror the notification to WhatsApp + Web Push (both no-op until creds set).
+  // Fire-and-forget so an outbound hiccup never blocks the in-app notification.
   prisma.user
     .findUnique({ where: { id: data.userId }, select: { mobile: true } })
     .then(u => sendWhatsApp(u?.mobile, `*${data.title}*\n\n${data.body}\n\n— HUManity Foundation`))
     .catch(() => {});
+  sendPush(data.userId, data.title, data.body).catch(() => {});
 
   return notification;
 }

@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   Building2, Users, Heart, BarChart3,
-  LogOut, Menu, Home, UserCog, UserCheck, Trophy, GraduationCap, BookOpen
+  LogOut, Menu, Home, UserCog, UserCheck, Trophy, GraduationCap, BookOpen,
+  HeartPulse, Library as LibraryIcon, CalendarDays
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { NotificationBell } from '@/components/shared/NotificationBell';
@@ -21,6 +22,9 @@ const navItems = [
   { href: '/opportunities', label: 'Opportunities', icon: Users, roles: ['SUPER_ADMIN', 'PROGRAM_MANAGER', 'VOLUNTEER'] },
   { href: '/classes', label: 'Classes', icon: GraduationCap, roles: ['SUPER_ADMIN', 'PROGRAM_MANAGER', 'VOLUNTEER'] },
   { href: '/curriculum', label: 'Curriculum', icon: BookOpen, roles: ['SUPER_ADMIN', 'PROGRAM_MANAGER', 'VOLUNTEER'] },
+  { href: '/health', label: 'Health', icon: HeartPulse, roles: ['SUPER_ADMIN', 'PROGRAM_MANAGER', 'CCI_MANAGER'] },
+  { href: '/library', label: 'Library', icon: LibraryIcon, roles: ['SUPER_ADMIN', 'PROGRAM_MANAGER', 'CCI_MANAGER', 'VOLUNTEER'] },
+  { href: '/calendar', label: 'My Calendar', icon: CalendarDays, roles: ['SUPER_ADMIN', 'PROGRAM_MANAGER', 'VOLUNTEER'] },
   { href: '/reports', label: 'Reports', icon: BarChart3, roles: ['SUPER_ADMIN', 'PROGRAM_MANAGER', 'CCI_MANAGER'] },
   { href: '/volunteers/pending', label: 'Approvals', icon: UserCheck, roles: ['SUPER_ADMIN', 'PROGRAM_MANAGER'] },
   { href: '/users', label: 'Team', icon: UserCog, roles: ['SUPER_ADMIN'] },

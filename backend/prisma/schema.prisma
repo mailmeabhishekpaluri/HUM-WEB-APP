@@ -201,6 +201,19 @@ enum CurriculumType {
   DIGITAL_LITERACY
 }
 
+enum HealthEventType {
+  QUARTERLY_CHECKUP
+  MONTHLY_AWARENESS
+}
+
+enum ReadingLevel {
+  BEGINNER
+  LETTER
+  WORD
+  PARAGRAPH
+  STORY
+}
+
 enum PoliceStatus {
   NOT_SUBMITTED
   SUBMITTED_PENDING
@@ -386,6 +399,7 @@ model CCI {
   visitLogs       VisitLog[]
   issues          Issue[]
   children        Child[]
+  opportunities   Opportunity[]
   auditLogs       AuditLog[]
 }
 
@@ -522,6 +536,7 @@ model Child {
   caseEvents        CaseEvent[]
   classEnrollments  ClassEnrollment[]
   classAttendance   ClassAttendance[]
+  readingAssessments ReadingAssessment[]
 }
 
 model AttendanceRecord {
@@ -700,6 +715,9 @@ model Opportunity {
   curriculumItemId  String?
   recurringSeriesId String?
   studentCount      Int?
+  healthEventType   HealthEventType?
+  meetLink          String?
+  calendarEventId   String?
   createdById       String
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
@@ -708,6 +726,7 @@ model Opportunity {
   registrations  EventRegistration[]
   sessionFeedback SessionFeedback?
   curriculumItem  CurriculumItem? @relation(fields: [curriculumItemId], references: [id])
+  cci             CCI?            @relation(fields: [cciId], references: [id])
 }
 
 model OpportunitySkill {
@@ -943,4 +962,31 @@ model CurriculumItem {
   opportunities Opportunity[]
 
   @@unique([type, sequence])
+}
+
+// ─── Library Project (P5) ────────────────────────────────────────────────────
+
+model ReadingAssessment {
+  id            String       @id @default(cuid())
+  childId       String
+  child         Child        @relation(fields: [childId], references: [id])
+  opportunityId String?
+  date          DateTime
+  level         ReadingLevel
+  bookTitle     String?
+  prathamGroup  String?
+  assessedById  String
+  notes         String?
+  createdAt     DateTime     @default(now())
+}
+
+// ─── Web Push subscriptions (optional; no-op until VAPID env set) ─────────────
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
 }
