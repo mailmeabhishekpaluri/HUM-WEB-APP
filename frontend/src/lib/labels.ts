@@ -118,6 +118,37 @@ export const NOTIFICATION_TYPE_LABELS: Record<string, string> = {
   HEALTH_CHECKUP_DUE: 'Health Checkup Due',
 };
 
+export const GRADE_LABELS: Record<string, string> = {
+  GRADE_8: 'Grade 8',
+  GRADE_9: 'Grade 9',
+  GRADE_10: 'Grade 10',
+};
+
+export const CLASS_SUBJECT_LABELS: Record<string, string> = {
+  MATHS: 'Maths',
+  SCIENCE: 'Science',
+  ENGLISH: 'English',
+};
+
+export const CLASS_SESSION_STATUS_LABELS: Record<string, string> = {
+  SCHEDULED: 'Scheduled',
+  SUBSTITUTION_REQUESTED: 'Substitution Requested',
+  COMPLETED: 'Completed',
+  CANCELLED: 'Cancelled',
+};
+
+export const SUBSTITUTION_STATUS_LABELS: Record<string, string> = {
+  OPEN: 'Open',
+  FILLED: 'Filled',
+  CANCELLED: 'Cancelled',
+  EXPIRED: 'Expired',
+};
+
+const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+export function weekdayName(n: number): string {
+  return WEEKDAY_NAMES[n] ?? '—';
+}
+
 /** Generic fallback: SCREAMING_SNAKE_CASE → Title Case */
 export function humanize(value?: string | null): string {
   if (!value) return '—';

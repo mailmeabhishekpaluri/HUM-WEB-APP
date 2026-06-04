@@ -15,6 +15,7 @@ import reportRoutes from './routes/reports';
 import auditRoutes from './routes/audit';
 import seriesRoutes from './routes/series';
 import teamRoutes from './routes/teams';
+import classRoutes from './routes/classes';
 import { errorHandler } from './middleware/errorHandler';
 
 export const app = express();
@@ -37,6 +38,7 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/audit', auditRoutes);
 app.use('/api/series', seriesRoutes);
 app.use('/api/teams', teamRoutes);
+app.use('/api/classes', classRoutes);
 
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
 

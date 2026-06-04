@@ -170,6 +170,32 @@ enum DedicatedTeamRole {
   SUPPORT
 }
 
+enum Grade {
+  GRADE_8
+  GRADE_9
+  GRADE_10
+}
+
+enum ClassSubject {
+  MATHS
+  SCIENCE
+  ENGLISH
+}
+
+enum ClassSessionStatus {
+  SCHEDULED
+  SUBSTITUTION_REQUESTED
+  COMPLETED
+  CANCELLED
+}
+
+enum SubstitutionStatus {
+  OPEN
+  FILLED
+  CANCELLED
+  EXPIRED
+}
+
 enum PoliceStatus {
   NOT_SUBMITTED
   SUBMITTED_PENDING
@@ -489,6 +515,8 @@ model Child {
   illnesses         Illness[]
   progressNotes     ProgressNote[]
   caseEvents        CaseEvent[]
+  classEnrollments  ClassEnrollment[]
+  classAttendance   ClassAttendance[]
 }
 
 model AttendanceRecord {
@@ -812,4 +840,84 @@ model Notification {
   isRead    Boolean          @default(false)
   data      Json?
   createdAt DateTime         @default(now())
+}
+
+// ─── Education Development Program (P1) ──────────────────────────────────────
+
+model ClassSection {
+  id                 String       @id @default(cuid())
+  grade              Grade
+  subject            ClassSubject
+  academicYear       String       // e.g. "2026-27"
+  dayOfWeek          Int          // 1=Mon (MATHS), 3=Wed (SCIENCE), 5=Fri (ENGLISH)
+  startTime          String       // "17:00" IST
+  durationMinutes    Int          @default(60)
+  meetLink           String?      // persistent Google Meet for this section
+  cciId              String?
+  primaryVolunteerId String?
+  isActive           Boolean      @default(true)
+  createdAt          DateTime     @default(now())
+
+  sessions    ClassSession[]
+  enrollments ClassEnrollment[]
+
+  @@unique([grade, subject, academicYear])
+}
+
+model ClassEnrollment {
+  classSectionId String
+  childId        String
+  classSection   ClassSection @relation(fields: [classSectionId], references: [id])
+  child          Child        @relation(fields: [childId], references: [id])
+
+  @@id([classSectionId, childId])
+}
+
+model ClassSession {
+  id                    String             @id @default(cuid())
+  classSectionId        String
+  classSection          ClassSection       @relation(fields: [classSectionId], references: [id])
+  date                  DateTime
+  status                ClassSessionStatus @default(SCHEDULED)
+  assignedVolunteerId   String?            // resolved teacher (primary or substitute)
+  meetLink              String?            // inherits section link if null
+  topic                 String?
+  lessonPlan            String?
+  lessonPlanSubmittedAt DateTime?
+  classFeedback         String?
+  feedbackSubmittedAt   DateTime?
+  cancelledReason       String?
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+
+  attendance           ClassAttendance[]
+  substitutionRequests SubstitutionRequest[]
+
+  @@unique([classSectionId, date])
+}
+
+model ClassAttendance {
+  id             String       @id @default(cuid())
+  classSessionId String
+  classSession   ClassSession @relation(fields: [classSessionId], references: [id])
+  childId        String
+  child          Child        @relation(fields: [childId], references: [id])
+  present        Boolean      @default(false)
+  note           String?
+  markedById     String
+  createdAt      DateTime     @default(now())
+
+  @@unique([classSessionId, childId])
+}
+
+model SubstitutionRequest {
+  id             String             @id @default(cuid())
+  classSessionId String
+  classSession   ClassSession       @relation(fields: [classSessionId], references: [id])
+  requestedById  String
+  reason         String?
+  status         SubstitutionStatus @default(OPEN)
+  filledById     String?
+  filledAt       DateTime?
+  createdAt      DateTime           @default(now())
 }
