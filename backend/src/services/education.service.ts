@@ -104,19 +104,21 @@ export async function materializeUpcomingClassSessions(days = 14): Promise<numbe
       const day = new Date(now.getTime() + i * 24 * 60 * 60 * 1000);
       if (istWeekday(day) !== section.dayOfWeek) continue;
       const dt = sessionDateTime(day, section.startTime);
-      try {
-        await prisma.classSession.create({
-          data: {
-            classSectionId: section.id,
-            date: dt,
-            assignedVolunteerId: section.primaryVolunteerId,
-            meetLink: section.meetLink,
-          },
-        });
-        created++;
-      } catch {
-        // unique [sectionId,date] → already exists, skip
-      }
+      // check-then-create keeps this idempotent without throwing on the unique
+      // [sectionId,date] constraint (a thrown+caught error mid-seed is noisy/fragile)
+      const existing = await prisma.classSession.findUnique({
+        where: { classSectionId_date: { classSectionId: section.id, date: dt } },
+      });
+      if (existing) continue;
+      await prisma.classSession.create({
+        data: {
+          classSectionId: section.id,
+          date: dt,
+          assignedVolunteerId: section.primaryVolunteerId,
+          meetLink: section.meetLink,
+        },
+      });
+      created++;
     }
   }
   return created;

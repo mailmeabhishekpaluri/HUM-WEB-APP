@@ -144,6 +144,11 @@ export const SUBSTITUTION_STATUS_LABELS: Record<string, string> = {
   EXPIRED: 'Expired',
 };
 
+export const CURRICULUM_TYPE_LABELS: Record<string, string> = {
+  SEL: 'Social Emotional Learning',
+  DIGITAL_LITERACY: 'Digital Literacy & AI',
+};
+
 const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 export function weekdayName(n: number): string {
   return WEEKDAY_NAMES[n] ?? '—';

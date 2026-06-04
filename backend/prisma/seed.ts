@@ -1,4 +1,4 @@
-import { PrismaClient, Role, BadgeTrigger, Programme, SessionCadence, SessionDeliveryMode, DedicatedTeamRole, Grade, ClassSubject, CCIType, FundingType, Gender, AdmissionSource, ChildCategory } from '@prisma/client';
+import { PrismaClient, Role, BadgeTrigger, Programme, SessionCadence, SessionDeliveryMode, DedicatedTeamRole, Grade, ClassSubject, CCIType, FundingType, Gender, AdmissionSource, ChildCategory, CurriculumType } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { materializeUpcomingClassSessions } from '../src/services/education.service';
 
@@ -231,6 +231,92 @@ async function main() {
   // Materialise the next 2 weeks of class sessions
   const created = await materializeUpcomingClassSessions(14);
   console.log(`Education: 9 sections seeded, ${created} upcoming sessions materialised.`);
+
+  // ── SEL & Digital Literacy curriculum (P2 / P3) ─────────────────────────
+  const selCurriculum = [
+    { sequence: 1, title: 'Knowing Myself', objective: 'Build self-awareness: who I am, my likes, dislikes and identity.', activities: ['Name & identity circle', 'My-favourites collage', 'All-about-me sharing'], outcome: 'Children can describe themselves and feel a sense of belonging in the group.' },
+    { sequence: 2, title: 'Understanding My Emotions', objective: 'Identify and name a range of emotions in self and others.', activities: ['Emotion flashcards', 'Feelings charades', 'Mood-meter check-in'], outcome: 'Children can label at least six emotions and recognise them in faces.' },
+    { sequence: 3, title: 'Managing Big Feelings', objective: 'Learn simple self-regulation strategies for strong emotions.', activities: ['Belly breathing', 'Calm-down corner', 'Stop-think-act role play'], outcome: 'Children practise one calming strategy they can use when upset.' },
+    { sequence: 4, title: 'My Strengths & Growth Mindset', objective: 'Recognise personal strengths and the power of "yet".', activities: ['Strengths tree', '“I can’t… yet” reframing', 'Effort vs outcome story'], outcome: 'Children name two personal strengths and one area to grow.' },
+    { sequence: 5, title: 'Empathy & Seeing Other Views', objective: 'Develop social awareness and perspective-taking.', activities: ['Walk-in-their-shoes role play', 'Empathy story circle', 'Kindness wall'], outcome: 'Children can describe how another person might feel in a situation.' },
+    { sequence: 6, title: 'Communicating Clearly', objective: 'Practise active listening and expressing needs respectfully.', activities: ['Listening pairs', 'I-statements practice', 'Telephone game debrief'], outcome: 'Children use an “I feel… because…” statement.' },
+    { sequence: 7, title: 'Friendship & Healthy Relationships', objective: 'Explore what makes a good friend and healthy boundaries.', activities: ['Friendship recipe', 'Boundary scenarios', 'Compliment circle'], outcome: 'Children identify qualities of a good friend and one boundary.' },
+    { sequence: 8, title: 'Teamwork & Cooperation', objective: 'Build collaboration and shared problem-solving skills.', activities: ['Group tower challenge', 'Silent line-up', 'Team reflection'], outcome: 'Children complete a task together and reflect on cooperation.' },
+    { sequence: 9, title: 'Resolving Conflicts Peacefully', objective: 'Learn steps to handle disagreements constructively.', activities: ['Conflict role play', 'Peace-path steps', 'Win-win brainstorm'], outcome: 'Children practise a 3-step conflict-resolution approach.' },
+    { sequence: 10, title: 'Making Responsible Decisions', objective: 'Practise thoughtful decision-making and consequences.', activities: ['Decision tree', 'Consequence cards', 'Real-life dilemmas'], outcome: 'Children weigh options and consequences before deciding.' },
+    { sequence: 11, title: 'Setting Goals', objective: 'Set a simple, achievable personal goal.', activities: ['Goal ladder', 'My-dream board', 'First-step planning'], outcome: 'Each child writes one short-term goal and first step.' },
+    { sequence: 12, title: 'Resilience & Moving Forward', objective: 'Celebrate growth and build resilience for setbacks.', activities: ['Bounce-back stories', 'Gratitude circle', 'Journey reflection & certificates'], outcome: 'Children reflect on their SEL journey and one resilience strategy.' },
+  ];
+  for (const item of selCurriculum) {
+    await prisma.curriculumItem.upsert({
+      where: { type_sequence: { type: CurriculumType.SEL, sequence: item.sequence } },
+      update: {},
+      create: { type: CurriculumType.SEL, durationMinutes: 75, ...item },
+    });
+  }
+
+  const dlaiCurriculum = [
+    { sequence: 1, title: 'Introduction to Computing & Internet', objective: 'Understand computers, devices and how the internet works safely.', activities: ['Parts of a computer', 'Safe browsing basics', 'Hands-on: open & navigate'], outcome: 'Children can use a device and browse the internet safely.' },
+    { sequence: 2, title: 'Introduction to AI', objective: 'Grasp what AI is, everyday examples, and basic intuition.', activities: ['AI all-around-us spotting', 'Pattern-recognition game', 'AI vs not-AI sorting'], outcome: 'Children can explain in simple terms what AI is and give examples.' },
+    { sequence: 3, title: 'AI for Education', objective: 'Use AI tools responsibly to support learning.', activities: ['Guided AI tutor demo', 'Ask-good-questions practice', 'Fact-check & verify'], outcome: 'Children use an AI learning tool and check its answers.' },
+    { sequence: 4, title: 'AI for Skilling', objective: 'Explore AI for future skills and career awareness.', activities: ['AI tools showcase', 'Skill-builder activity', 'My-future-with-AI reflection'], outcome: 'Children identify one skill AI can help them build.' },
+  ];
+  for (const item of dlaiCurriculum) {
+    await prisma.curriculumItem.upsert({
+      where: { type_sequence: { type: CurriculumType.DIGITAL_LITERACY, sequence: item.sequence } },
+      update: {},
+      create: { type: CurriculumType.DIGITAL_LITERACY, durationMinutes: 75, ...item },
+    });
+  }
+
+  // ── Upcoming alternating-Sunday Opportunities (SEL + DLAI) at the demo CCI ──
+  // Point the alternate-Sunday series at the demo CCI so generation has a venue.
+  await prisma.recurringSeries.updateMany({
+    where: { cadence: SessionCadence.ALTERNATE_SUNDAY, cciId: null },
+    data: { cciId: demoCCI.id },
+  });
+
+  function nextSundays(count: number): Date[] {
+    const out: Date[] = [];
+    // start from tomorrow to stay in the future, walk to Sundays (IST ~ server may be UTC; use UTC day)
+    const d = new Date();
+    d.setUTCHours(4, 30, 0, 0); // 10:00 IST
+    while (out.length < count) {
+      d.setUTCDate(d.getUTCDate() + 1);
+      if (d.getUTCDay() === 0) out.push(new Date(d));
+    }
+    return out;
+  }
+  const [sun1, sun2] = nextSundays(2);
+  const sel1 = await prisma.curriculumItem.findUnique({ where: { type_sequence: { type: CurriculumType.SEL, sequence: 1 } } });
+  const dlai1 = await prisma.curriculumItem.findUnique({ where: { type_sequence: { type: CurriculumType.DIGITAL_LITERACY, sequence: 1 } } });
+
+  const upcoming = [
+    { programmeArea: Programme.P2_SEL, dateTime: sun1, title: `SEL — Session 1: ${sel1?.title}`, curriculumItemId: sel1?.id, studentCount: 60, requiredCount: 10 },
+    { programmeArea: Programme.P3_DIGITAL_LITERACY, dateTime: sun2, title: `Digital Literacy & AI — Module 1: ${dlai1?.title}`, curriculumItemId: dlai1?.id, studentCount: 30, requiredCount: 5 },
+  ];
+  for (const o of upcoming) {
+    const existing = await prisma.opportunity.findFirst({ where: { programmeArea: o.programmeArea, dateTime: o.dateTime, cciId: demoCCI.id } });
+    if (!existing) {
+      await prisma.opportunity.create({
+        data: {
+          title: o.title,
+          programmeArea: o.programmeArea,
+          cciId: demoCCI.id,
+          dateTime: o.dateTime,
+          durationMinutes: 90,
+          location: `${demoCCI.name}, ${demoCCI.district}`,
+          requiredCount: o.requiredCount,
+          studentCount: o.studentCount,
+          deliveryMode: SessionDeliveryMode.ON_GROUND,
+          status: 'OPEN',
+          curriculumItemId: o.curriculumItemId,
+          createdById: superAdmin.id,
+        },
+      });
+    }
+  }
+  console.log('SEL/DLAI: 12 SEL + 4 DLAI curriculum items seeded; 2 upcoming Sunday sessions created.');
 
   console.log('Seed complete. Admin: admin@humanityorg.foundation / Admin@123');
 }

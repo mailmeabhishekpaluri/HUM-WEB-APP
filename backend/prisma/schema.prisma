@@ -196,6 +196,11 @@ enum SubstitutionStatus {
   EXPIRED
 }
 
+enum CurriculumType {
+  SEL
+  DIGITAL_LITERACY
+}
+
 enum PoliceStatus {
   NOT_SUBMITTED
   SUBMITTED_PENDING
@@ -702,6 +707,7 @@ model Opportunity {
   requiredSkills OpportunitySkill[]
   registrations  EventRegistration[]
   sessionFeedback SessionFeedback?
+  curriculumItem  CurriculumItem? @relation(fields: [curriculumItemId], references: [id])
 }
 
 model OpportunitySkill {
@@ -920,4 +926,21 @@ model SubstitutionRequest {
   filledById     String?
   filledAt       DateTime?
   createdAt      DateTime           @default(now())
+}
+
+// ─── SEL & Digital Literacy curriculum (P2 / P3) ─────────────────────────────
+
+model CurriculumItem {
+  id              String         @id @default(cuid())
+  type            CurriculumType
+  sequence        Int
+  title           String
+  objective       String?
+  activities      String[]
+  outcome         String?
+  durationMinutes Int            @default(75)
+
+  opportunities Opportunity[]
+
+  @@unique([type, sequence])
 }

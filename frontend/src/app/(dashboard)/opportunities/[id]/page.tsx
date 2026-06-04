@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Calendar, MapPin, Users, Clock, ShieldCheck, Pencil } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Users, Clock, ShieldCheck, Pencil, BookOpen } from 'lucide-react';
 import {
   PROGRAMME_LABELS,
   PROGRAMME_OPTIONS,
@@ -69,17 +69,69 @@ export default function OpportunityDetailPage() {
     title: '', programmeArea: '', dateTime: '', durationMinutes: '',
     location: '', requiredCount: '', description: '', safeguardingLevel: '',
   });
+  const [program, setProgram] = useState<any>(null);
+  const [fb, setFb] = useState({
+    childrenPresent: '', childrenEngaged: '', childParticipationRating: '',
+    volunteerParticipationRating: '', volunteersPresent: '', whatWentWell: '',
+    challenges: '', followUpNeeded: false, followUpNotes: '',
+  });
+  const [fbBusy, setFbBusy] = useState(false);
 
   const canManage = user?.role === 'SUPER_ADMIN' || user?.role === 'PROGRAM_MANAGER';
+  const isOnGroundProgram = opp?.programmeArea === 'P2_SEL' || opp?.programmeArea === 'P3_DIGITAL_LITERACY';
 
   async function load() {
     try {
       const res = await api.get(`/opportunities/${id}`);
       setOpp(res.data);
+      if (res.data.programmeArea === 'P2_SEL' || res.data.programmeArea === 'P3_DIGITAL_LITERACY') {
+        const [prog, fbRes] = await Promise.all([
+          api.get(`/programs/sessions/${id}`).catch(() => null),
+          api.get(`/opportunities/${id}/feedback`).catch(() => null),
+        ]);
+        if (prog?.data) setProgram(prog.data);
+        if (fbRes?.data) {
+          const f = fbRes.data;
+          setFb({
+            childrenPresent: f.childrenPresent?.toString() ?? '',
+            childrenEngaged: f.childrenEngaged?.toString() ?? '',
+            childParticipationRating: f.childParticipationRating?.toString() ?? '',
+            volunteerParticipationRating: f.volunteerParticipationRating?.toString() ?? '',
+            volunteersPresent: f.volunteersPresent?.toString() ?? '',
+            whatWentWell: f.whatWentWell ?? '',
+            challenges: f.challenges ?? '',
+            followUpNeeded: f.followUpNeeded ?? false,
+            followUpNotes: f.followUpNotes ?? '',
+          });
+        }
+      }
     } catch {
       toast.error('Failed to load opportunity');
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function submitFeedback() {
+    setFbBusy(true);
+    try {
+      await api.post(`/opportunities/${id}/feedback`, {
+        childrenPresent: fb.childrenPresent ? Number(fb.childrenPresent) : null,
+        childrenEngaged: fb.childrenEngaged ? Number(fb.childrenEngaged) : null,
+        childParticipationRating: fb.childParticipationRating ? Number(fb.childParticipationRating) : null,
+        volunteerParticipationRating: fb.volunteerParticipationRating ? Number(fb.volunteerParticipationRating) : null,
+        volunteersPresent: fb.volunteersPresent ? Number(fb.volunteersPresent) : null,
+        whatWentWell: fb.whatWentWell || null,
+        challenges: fb.challenges || null,
+        followUpNeeded: fb.followUpNeeded,
+        followUpNotes: fb.followUpNotes || null,
+      });
+      toast.success('Session feedback saved');
+      load();
+    } catch (err: any) {
+      toast.error(err.response?.data?.error ?? 'Could not save feedback');
+    } finally {
+      setFbBusy(false);
     }
   }
 
@@ -260,6 +312,80 @@ export default function OpportunityDetailPage() {
           )}
         </CardContent>
       </Card>
+
+      {isOnGroundProgram && program?.curriculumItem && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <BookOpen className="w-4 h-4 text-[#3191c2]" />Curriculum
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            <p className="font-semibold">{program.curriculumItem.title}</p>
+            {program.curriculumItem.objective && (
+              <p className="text-slate-600"><span className="text-slate-400">Objective: </span>{program.curriculumItem.objective}</p>
+            )}
+            {program.curriculumItem.activities?.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {program.curriculumItem.activities.map((a: string, i: number) => (
+                  <Badge key={i} variant="secondary" className="text-xs font-normal">{a}</Badge>
+                ))}
+              </div>
+            )}
+            {program.curriculumItem.outcome && (
+              <p className="text-slate-500"><span className="text-slate-400">Outcome: </span>{program.curriculumItem.outcome}</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {isOnGroundProgram && program?.ratio && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Volunteer Ratio (1:6)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div className="text-sm">
+                <span className="text-2xl font-bold text-slate-900">{program.volunteerCount}</span>
+                <span className="text-slate-500"> volunteers · need </span>
+                <span className="font-semibold">{program.ratio.required}</span>
+                <span className="text-slate-500"> for {program.studentCount ?? 0} students</span>
+              </div>
+              <Badge className={program.ratio.met ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}>
+                {program.ratio.met ? 'Ratio met' : `Need ${Math.max(0, program.ratio.required - program.volunteerCount)} more`}
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {isOnGroundProgram && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Post-session Feedback</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1"><Label className="text-xs">Children present</Label><Input type="number" value={fb.childrenPresent} onChange={e => setFb(f => ({ ...f, childrenPresent: e.target.value }))} /></div>
+              <div className="space-y-1"><Label className="text-xs">Children engaged</Label><Input type="number" value={fb.childrenEngaged} onChange={e => setFb(f => ({ ...f, childrenEngaged: e.target.value }))} /></div>
+              <div className="space-y-1"><Label className="text-xs">Volunteers present</Label><Input type="number" value={fb.volunteersPresent} onChange={e => setFb(f => ({ ...f, volunteersPresent: e.target.value }))} /></div>
+              <div className="space-y-1"><Label className="text-xs">Child participation (1-5)</Label><Input type="number" min="1" max="5" value={fb.childParticipationRating} onChange={e => setFb(f => ({ ...f, childParticipationRating: e.target.value }))} /></div>
+              <div className="space-y-1"><Label className="text-xs">Volunteer participation (1-5)</Label><Input type="number" min="1" max="5" value={fb.volunteerParticipationRating} onChange={e => setFb(f => ({ ...f, volunteerParticipationRating: e.target.value }))} /></div>
+            </div>
+            <div className="space-y-1"><Label className="text-xs">What went well</Label><Textarea rows={2} value={fb.whatWentWell} onChange={e => setFb(f => ({ ...f, whatWentWell: e.target.value }))} /></div>
+            <div className="space-y-1"><Label className="text-xs">Challenges</Label><Textarea rows={2} value={fb.challenges} onChange={e => setFb(f => ({ ...f, challenges: e.target.value }))} /></div>
+            <label className="flex items-center gap-2 text-sm cursor-pointer">
+              <input type="checkbox" checked={fb.followUpNeeded} onChange={e => setFb(f => ({ ...f, followUpNeeded: e.target.checked }))} />
+              Follow-up needed
+            </label>
+            {fb.followUpNeeded && (
+              <div className="space-y-1"><Label className="text-xs">Follow-up notes</Label><Textarea rows={2} value={fb.followUpNotes} onChange={e => setFb(f => ({ ...f, followUpNotes: e.target.value }))} /></div>
+            )}
+            <Button className="bg-[#3191c2] hover:bg-[#2a7fa8]" disabled={fbBusy} onClick={submitFeedback}>Save Feedback</Button>
+          </CardContent>
+        </Card>
+      )}
 
       {canManage && (
         <Card>
